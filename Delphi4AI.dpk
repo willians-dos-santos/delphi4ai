@@ -35,6 +35,7 @@ contains
   LLM.HistoryStrategy in 'llm\LLM.HistoryStrategy.pas',
   LLM.Base in 'llm\LLM.Base.pas',
   Utils.JSONArray in 'utils\Utils.JSONArray.pas',
-  LLM.Exceptions in 'llm\LLM.Exceptions.pas';
+  LLM.Exceptions in 'llm\LLM.Exceptions.pas',
+  LLM.Factory in 'app\LLM.Factory.pas';
 
 end.

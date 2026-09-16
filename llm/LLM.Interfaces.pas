@@ -2,6 +2,7 @@
 
 interface
 uses
+  System.JSON,
   LLM.HistoryStrategy;
 
 type
@@ -36,6 +37,8 @@ type
     function GetSummaryPrompt: string;
     procedure SetSummaryPrompt(const Value: string);
 
+    function GetMessages: TJSONArray;
+
     // Métodos do provedor
     procedure ClearHistory;
     procedure AddMessage(const ARole, AContent: string);
@@ -69,6 +72,7 @@ type
     // Propriedades de controle de memória/histórico
     property HistoryStrategy: THistoryStrategy read GetHistoryStrategy write SetHistoryStrategy;
     property MaxHistoryMessages: Integer read GetMaxHistoryMessages write SetMaxHistoryMessages;
+    property Messages: TJSONArray read GetMessages;
     property KeepRecentMessages: Integer read GetKeepRecentMessages write SetKeepRecentMessages;
     property SummaryModel: string read GetSummaryModel write SetSummaryModel;
     property SummaryPrompt: string read GetSummaryPrompt write SetSummaryPrompt;

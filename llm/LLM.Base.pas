@@ -60,6 +60,7 @@ type
     procedure SetSummaryModel(const Value: string);
     function GetSummaryPrompt: string;
     procedure SetSummaryPrompt(const Value: string);
+    function GetMessages: TJSONArray;
 
   protected
     function BuildBodyJSON(const AModel: string; ATemp: Double;
@@ -86,7 +87,7 @@ type
     function Send(out RawJSON: string): string; overload;
     function Send: string; overload;
 
-    property Messages: TJSONArray read FMessages;
+    property Messages: TJSONArray read GetMessages;
 
     property ApiKey: string read GetApiKey write SetApiKey;
     property BaseURL: string read GetBaseURL write SetBaseURL;
@@ -194,7 +195,7 @@ begin
 
     if AMaxTok > 0 then
       LBody.AddPair('max_tokens', TJSONNumber.Create(AMaxTok));
-
+    LBody.AddPair('stream', false);
     Result := LBody.ToJSON;
   finally
     LBody.Free;
@@ -256,6 +257,11 @@ end;
 function TLLMProviderBase.GetMaxTokens: Integer;
 begin
   Result := FMaxTokens;
+end;
+
+function TLLMProviderBase.GetMessages: TJSONArray;
+begin
+  Result := FMessages;
 end;
 
 function TLLMProviderBase.GetModel: string;
