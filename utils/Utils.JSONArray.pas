@@ -1,4 +1,4 @@
-unit Utils.JSONArray;
+ï»¿unit Utils.JSONArray;
 
 interface
 
@@ -19,9 +19,9 @@ implementation
 
 procedure TJSONArrayHelper.Clear;
 begin
-  // Remove do fim para o início para evitar deslocamento contínuo de memória (O(1) por item)
-  // No System.JSON, Remove() apenas desvincula e retorna a instância,
-  // sendo obrigatório chamar .Free para não gerar memory leak.
+  // Remove do fim para o inÃ­cio para evitar deslocamento contÃ­nuo de memÃ³ria (O(1) por item)
+  // No System.JSON, Remove() apenas desvincula e retorna a instÃ¢ncia,
+  // sendo obrigatÃ³rio chamar .Free para nÃ£o gerar memory leak.
   while Count > 0 do
     Remove(Count - 1).Free;
 

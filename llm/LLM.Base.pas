@@ -1,4 +1,4 @@
-unit LLM.Base;
+Ôªøunit LLM.Base;
 
 interface
 
@@ -28,7 +28,7 @@ type
     FMessages: TJSONArray;
     FHttpClient: THTTPClient;
 
-    // ConfiguraÁıes de HistÛrico
+    // Configura√ß√µes de Hist√≥rico
     FHistoryStrategy: THistoryStrategy;
     FMaxHistoryMessages: Integer;
     FKeepRecentMessages: Integer;
@@ -61,14 +61,15 @@ type
     function GetSummaryPrompt: string;
     procedure SetSummaryPrompt(const Value: string);
 
+  protected
     function BuildBodyJSON(const AModel: string; ATemp: Double;
-      AMaxTok: Integer; AMsgs: TJSONArray): string;
-    function ExtractErrorMessage(const AErrorJSON: string): string;
+      AMaxTok: Integer; AMsgs: TJSONArray): string; virtual;
+    function ExtractErrorMessage(const AErrorJSON: string): string; virtual;
     function ExecuteRequest(const ABodyJSON: string;
-      out ARawJSON: string): string;
+      out ARawJSON: string): string; virtual;
 
-    procedure ApplySlidingWindow;
-    procedure ProcessHistory;
+    procedure ApplySlidingWindow; virtual;
+    procedure ProcessHistory; virtual;
   public
     constructor Create(const AApiKey: string; const ABaseURL:String;
       const AModel: string);
@@ -84,6 +85,8 @@ type
 
     function Send(out RawJSON: string): string; overload;
     function Send: string; overload;
+
+    property Messages: TJSONArray read FMessages;
 
     property ApiKey: string read GetApiKey write SetApiKey;
     property BaseURL: string read GetBaseURL write SetBaseURL;
@@ -106,6 +109,7 @@ type
 
 implementation
 uses
+  LLM.Exceptions,
   Utils.JSONArray;
 
 constructor TLLMProviderBase.Create(const AApiKey, ABaseURL, AModel: string);
@@ -119,13 +123,13 @@ begin
   FTimeout := 60000;
   FAutoAddAssistantResponse := True;
 
-  // ConfiguraÁıes padr„o de histÛrico
+  // Configura√ß√µes padr√£o de hist√≥rico
   FHistoryStrategy := hsSlidingWindow;
   FMaxHistoryMessages := 10;
   FKeepRecentMessages := 4;
   FSummaryModel := EmptyStr; // Se vazio, usa o mesmo FModel
   FSummaryPrompt :=
-    'Sintetize os pontos principais, vari·veis e decisıes desta conversa:';
+    'Sintetize os pontos principais, vari√°veis e decis√µes desta conversa:';
 
   FMessages := TJSONArray.Create;
   FHttpClient := THTTPClient.Create;
@@ -174,10 +178,15 @@ function TLLMProviderBase.BuildBodyJSON(const AModel: string; ATemp: Double;
   AMaxTok: Integer; AMsgs: TJSONArray): string;
 var
   LBody: TJSONObject;
+  LOldOwned: Boolean;
 begin
   LBody := TJSONObject.Create;
+  LOldOwned := AMsgs.Owned;
   try
     LBody.AddPair('model', AModel);
+
+    // Impede que LBody.Free destrua o array AMsgs compartilhado
+    AMsgs.Owned := False;
     LBody.AddPair('messages', AMsgs);
 
     if ATemp >= 0 then
@@ -188,9 +197,8 @@ begin
 
     Result := LBody.ToJSON;
   finally
-    // Desvincula o array antes de dar Free no container para evitar AV/Double Free
-    LBody.RemovePair('messages');
     LBody.Free;
+    AMsgs.Owned := LOldOwned;
   end;
 end;
 
@@ -305,7 +313,7 @@ begin
   ARawJSON := LSResp;
 
   if LResp.StatusCode <> 200 then
-    raise Exception.CreateFmt('Erro API [%d]: %s',
+    raise ELLMAPIError.CreateFmt('Erro API [%d]: %s',
       [LResp.StatusCode, ExtractErrorMessage(LSResp)]);
 
   LVal := TJSONObject.ParseJSONValue(LSResp);
@@ -313,14 +321,14 @@ begin
   begin
     LVal.Free;
     raise Exception.Create
-      ('A resposta retornada pela API n„o È um JSON v·lido.');
+      ('A resposta retornada pela API n√£o √© um JSON v√°lido.');
   end;
 
   LJSON := TJSONObject(LVal);
   try
     if not LJSON.TryGetValue<TJSONArray>('choices', LChoices) or
       (LChoices.Count = 0) then
-      raise Exception.Create('Nenhum nÛ "choices" retornado pela API.');
+      raise Exception.Create('Nenhum n√≥ "choices" retornado pela API.');
 
     LChoice := LChoices.Items[0] as TJSONObject;
     if not LChoice.TryGetValue<TJSONObject>('message', LMsg) then
@@ -345,7 +353,7 @@ begin
     Exit;
 
   LSystemOffset := 0;
-  // Protege a instruÁ„o de sistema no topo caso exista
+  // Protege a instru√ß√£o de sistema no topo caso exista
   if (FMessages.Count > 0) and (FMessages.Items[0] is TJSONObject) then
   begin
     if TJSONObject(FMessages.Items[0]).GetValue<string>('role', EmptyStr) = 'system'
@@ -382,7 +390,7 @@ begin
   if LCountToSummarize <= 0 then
     Exit; // Sem mensagens suficientes para condensar
 
-  // 1. Monta o histÛrico a ser resumido
+  // 1. Monta o hist√≥rico a ser resumido
   LTranscript := EmptyStr;
   for I := LStartIdx to (LStartIdx + LCountToSummarize - 1) do
   begin
@@ -405,9 +413,9 @@ begin
     LSummarySys := TJSONObject.Create;
     LSummarySys.AddPair('role', 'system');
     LSummarySys.AddPair('content',
-      'VocÍ È um assistente encarregado de compactar histÛricos de chat. ' +
-      'Gere um resumo enxuto e objetivo dos tÛpicos discutidos, decisıes tomadas e dados informados, '
-      + 'para que o contexto n„o se perca.');
+      'Voc√™ √© um assistente encarregado de compactar hist√≥ricos de chat. ' +
+      'Gere um resumo enxuto e objetivo dos t√≥picos discutidos, decis√µes tomadas e dados informados, '
+      + 'para que o contexto n√£o se perca.');
     LReqMsgs.AddElement(LSummarySys);
 
     LSummaryUser := TJSONObject.Create;
@@ -425,21 +433,21 @@ begin
   if LSummaryText.Trim.IsEmpty then
     Exit;
 
-  // 3. ReconstrÛi o FMessages de forma segura e sem vazamento de memÛria
+  // 3. Reconstr√≥i o FMessages de forma segura e sem vazamento de mem√≥ria
   LNewMessages := TJSONArray.Create;
 
   // Preserva o System Prompt original no topo
   if LHasSystem then
     LNewMessages.AddElement(FMessages.RemoveFirst);
 
-  // Insere o resumo gerado logo apÛs as instruÁıes de sistema
+  // Insere o resumo gerado logo ap√≥s as instru√ß√µes de sistema
   LSummaryBlock := TJSONObject.Create;
   LSummaryBlock.AddPair('role', 'system');
-  LSummaryBlock.AddPair('content', '[RESUMO DO HIST”RICO ANTERIOR]:' +
+  LSummaryBlock.AddPair('content', '[RESUMO DO HISTORICO ANTERIOR]:' +
     sLineBreak + LSummaryText);
   LNewMessages.AddElement(LSummaryBlock);
 
-  // Libera da memÛria as mensagens que foram condensadas
+  // Libera da mem√≥ria as mensagens que foram condensadas
   for I := 1 to LCountToSummarize do
     FMessages.RemoveFirstAndFree;
 
@@ -471,7 +479,7 @@ function TLLMProviderBase.Send(out RawJSON: string): string;
 var
   LBodyStr: string;
 begin
-  // Executa a estratÈgia de reduÁ„o de histÛrico antes do envio
+  // Executa a estrat√©gia de redu√ß√£o de hist√≥rico antes do envio
   ProcessHistory;
 
   LBodyStr := BuildBodyJSON(FModel, FTemperature, FMaxTokens, FMessages);

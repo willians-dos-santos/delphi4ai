@@ -1,0 +1,47 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{C6E0FA41-7A39-44F2-BE78-438B0B7D1030}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="Delphi4AI.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="tests\Delphi4AI.Tests.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="Delphi4AI">
+        <MSBuild Projects="Delphi4AI.dproj"/>
+    </Target>
+    <Target Name="Delphi4AI:Clean">
+        <MSBuild Projects="Delphi4AI.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="Delphi4AI:Make">
+        <MSBuild Projects="Delphi4AI.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Delphi4AI_Tests">
+        <MSBuild Projects="tests\Delphi4AI.Tests.dproj"/>
+    </Target>
+    <Target Name="Delphi4AI_Tests:Clean">
+        <MSBuild Projects="tests\Delphi4AI.Tests.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="Delphi4AI_Tests:Make">
+        <MSBuild Projects="tests\Delphi4AI.Tests.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="Delphi4AI;Delphi4AI_Tests"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="Delphi4AI:Clean;Delphi4AI_Tests:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="Delphi4AI:Make;Delphi4AI_Tests:Make"/>
+    </Target>
+</Project>

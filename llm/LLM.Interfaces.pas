@@ -1,10 +1,12 @@
-unit LLM.Interfaces;
+ï»¿unit LLM.Interfaces;
 
 interface
 uses
   LLM.HistoryStrategy;
 
 type
+  
+
   ILLMProvider = interface
     ['{E4627A59-5B8F-4D2A-94B6-1E27B13C4509}']
     // Getters e Setters das propriedades
@@ -34,21 +36,21 @@ type
     function GetSummaryPrompt: string;
     procedure SetSummaryPrompt(const Value: string);
 
-    // Métodos do provedor
+    // MÃ©todos do provedor
     procedure ClearHistory;
     procedure AddMessage(const ARole, AContent: string);
     procedure AddSystem(const AContent: string);
     procedure AddUser(const AContent: string);
     procedure AddAssistant(const AContent: string);
 
-    // Dispara manualmente o resumo do histórico atual (útil sob demanda)
+    // Dispara manualmente o resumo do histÃ³rico atual (Ãºtil sob demanda)
     procedure SummarizeHistory;
 
     function Send(out RawJSON: string): string; overload;
     function Send: string; overload;
 
-    // Métodos privados da classe original (detalhes de implementação).
-    // Caso queira torná-los parte do contrato da interface, basta descomentar:
+    // MÃ©todos privados da classe original (detalhes de implementaÃ§Ã£o).
+    // Caso queira tornÃ¡-los parte do contrato da interface, basta descomentar:
     // function BuildBodyJSON(const AModel: string; ATemp: Double; AMaxTok: Integer; AMsgs: TJSONArray): string;
     // function ExtractErrorMessage(const AErrorJSON: string): string;
     // function ExecuteRequest(const ABodyJSON: string; out ARawJSON: string): string;
@@ -64,7 +66,7 @@ type
     property Timeout: Integer read GetTimeout write SetTimeout;
     property AutoAddAssistantResponse: Boolean read GetAutoAddAssistantResponse write SetAutoAddAssistantResponse;
 
-    // Propriedades de controle de memória/histórico
+    // Propriedades de controle de memÃ³ria/histÃ³rico
     property HistoryStrategy: THistoryStrategy read GetHistoryStrategy write SetHistoryStrategy;
     property MaxHistoryMessages: Integer read GetMaxHistoryMessages write SetMaxHistoryMessages;
     property KeepRecentMessages: Integer read GetKeepRecentMessages write SetKeepRecentMessages;

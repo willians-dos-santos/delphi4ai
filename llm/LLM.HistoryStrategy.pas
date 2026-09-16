@@ -1,12 +1,12 @@
-unit LLM.HistoryStrategy;
+Ôªøunit LLM.HistoryStrategy;
 
 interface
 type
   /// <summary>
-  /// EstratÈgia de gest„o e poda do histÛrico de mensagens
+  /// Estrat√©gia de gest√£o e poda do hist√≥rico de mensagens
   /// </summary>
   THistoryStrategy = (
-    hsNone,          // HistÛrico cresce livremente (sem poda)
+    hsNone,          // Hist√≥rico cresce livremente (sem poda)
     hsSlidingWindow, // Descarta as mensagens mais antigas (preserva o System prompt)
     hsSummarize      // Condensa as mensagens antigas em um resumo via API
   );
