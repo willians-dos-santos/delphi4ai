@@ -3,9 +3,9 @@
 interface
 
 uses
-
   LLM.Interfaces,
   LLM.HistoryStrategy,
+  LLM.Tools,
   System.SysUtils,
   System.Classes,
   System.JSON,
@@ -13,9 +13,9 @@ uses
   System.Net.HttpClient;
 
 type
-  // <summary>
-  // Provedor base
-  // </summary>
+  /// <summary>
+  /// Provedor base para integracao com APIs de LLM compativeis com OpenAI
+  /// </summary>
   TLLMProviderBase = class(TInterfacedObject, ILLMProvider)
   private
     FApiKey: string;
@@ -28,13 +28,24 @@ type
     FMessages: TJSONArray;
     FHttpClient: THTTPClient;
 
-    // Configurações de Histórico
+    // Configuracoes de Historico
     FHistoryStrategy: THistoryStrategy;
     FMaxHistoryMessages: Integer;
     FKeepRecentMessages: Integer;
     FSummaryModel: string;
     FSummaryPrompt: string;
 
+    // Configuracoes e estado de Tools / Function Calling
+    FTools: ILLMToolRegistry;
+    FAutoExecuteTools: Boolean;
+    FMaxToolIterations: Integer;
+    FPropagateToolExceptions: Boolean;
+    FLastToolCalls: TLLMToolCallList;
+    FHasToolCalls: Boolean;
+    FOnBeforeExecuteTool: TOnBeforeExecuteToolEvent;
+    FOnAfterExecuteTool: TOnAfterExecuteToolEvent;
+
+    // Getters e Setters de Propriedades Basicas
     function GetApiKey: string;
     procedure SetApiKey(const Value: string);
     function GetBaseURL: string;
@@ -50,6 +61,7 @@ type
     function GetAutoAddAssistantResponse: Boolean;
     procedure SetAutoAddAssistantResponse(const Value: Boolean);
 
+    // Getters e Setters de Historico
     function GetHistoryStrategy: THistoryStrategy;
     procedure SetHistoryStrategy(const Value: THistoryStrategy);
     function GetMaxHistoryMessages: Integer;
@@ -62,6 +74,21 @@ type
     procedure SetSummaryPrompt(const Value: string);
     function GetMessages: TJSONArray;
 
+    // Getters e Setters de Tools
+    function GetAutoExecuteTools: Boolean;
+    procedure SetAutoExecuteTools(const Value: Boolean);
+    function GetMaxToolIterations: Integer;
+    procedure SetMaxToolIterations(const Value: Integer);
+    function GetPropagateToolExceptions: Boolean;
+    procedure SetPropagateToolExceptions(const Value: Boolean);
+    function GetHasToolCalls: Boolean;
+    function GetLastToolCalls: TLLMToolCallList;
+    function GetTools: ILLMToolRegistry;
+    function GetOnBeforeExecuteTool: TOnBeforeExecuteToolEvent;
+    procedure SetOnBeforeExecuteTool(const Value: TOnBeforeExecuteToolEvent);
+    function GetOnAfterExecuteTool: TOnAfterExecuteToolEvent;
+    procedure SetOnAfterExecuteTool(const Value: TOnAfterExecuteToolEvent);
+
   protected
     function BuildBodyJSON(const AModel: string; ATemp: Double;
       AMaxTok: Integer; AMsgs: TJSONArray): string; virtual;
@@ -71,8 +98,9 @@ type
 
     procedure ApplySlidingWindow; virtual;
     procedure ProcessHistory; virtual;
+    procedure SetLastToolCalls(const ACalls: TLLMToolCallList);
   public
-    constructor Create(const AApiKey: string; const ABaseURL:String;
+    constructor Create(const AApiKey: string; const ABaseURL: string;
       const AModel: string);
     destructor Destroy; override;
 
@@ -81,6 +109,22 @@ type
     procedure AddSystem(const AContent: string); inline;
     procedure AddUser(const AContent: string); inline;
     procedure AddAssistant(const AContent: string); inline;
+
+    // Registro de Ferramentas / Functions
+    procedure RegisterTool(const ATool: ILLMTool); overload;
+    procedure RegisterTool(const AName, ADescription, AParametersSchemaJSON: string; const AHandler: TToolCallback); overload;
+    procedure RegisterTool(const AName, ADescription: string; const AParametersSchema: TJSONObject; const AHandler: TToolCallback); overload;
+    procedure RegisterTool(const AName, ADescription, AParametersSchemaJSON: string; const AHandler: TToolJSONCallback); overload;
+    procedure RegisterTool(const AName, ADescription: string; const AParametersSchema: TJSONObject; const AHandler: TToolJSONCallback); overload;
+
+    procedure RegisterFunction(const AName, ADescription, AParametersSchemaJSON: string; const AHandler: TToolCallback); overload;
+    procedure RegisterFunction(const AName, ADescription: string; const AParametersSchema: TJSONObject; const AHandler: TToolCallback); overload;
+    procedure RegisterFunction(const AName, ADescription, AParametersSchemaJSON: string; const AHandler: TToolJSONCallback); overload;
+    procedure RegisterFunction(const AName, ADescription: string; const AParametersSchema: TJSONObject; const AHandler: TToolJSONCallback); overload;
+
+    procedure UnregisterTool(const AName: string);
+    procedure ClearTools;
+    procedure AddToolResult(const AToolCallId, AContent: string);
 
     procedure SummarizeHistory;
 
@@ -106,9 +150,20 @@ type
       write SetKeepRecentMessages;
     property SummaryModel: string read GetSummaryModel write SetSummaryModel;
     property SummaryPrompt: string read GetSummaryPrompt write SetSummaryPrompt;
+
+    property AutoExecuteTools: Boolean read GetAutoExecuteTools write SetAutoExecuteTools;
+    property MaxToolIterations: Integer read GetMaxToolIterations write SetMaxToolIterations;
+    property PropagateToolExceptions: Boolean read GetPropagateToolExceptions write SetPropagateToolExceptions;
+    property LastToolCalls: TLLMToolCallList read GetLastToolCalls;
+    property HasToolCalls: Boolean read GetHasToolCalls;
+    property Tools: ILLMToolRegistry read GetTools;
+
+    property OnBeforeExecuteTool: TOnBeforeExecuteToolEvent read GetOnBeforeExecuteTool write SetOnBeforeExecuteTool;
+    property OnAfterExecuteTool: TOnAfterExecuteToolEvent read GetOnAfterExecuteTool write SetOnAfterExecuteTool;
   end;
 
 implementation
+
 uses
   LLM.Exceptions,
   Utils.JSONArray;
@@ -124,13 +179,23 @@ begin
   FTimeout := 60000;
   FAutoAddAssistantResponse := True;
 
-  // Configurações padrão de histórico
+  // Configuracoes padrao de historico
   FHistoryStrategy := hsSlidingWindow;
   FMaxHistoryMessages := 10;
   FKeepRecentMessages := 4;
-  FSummaryModel := EmptyStr; // Se vazio, usa o mesmo FModel
+  FSummaryModel := EmptyStr;
   FSummaryPrompt :=
-    'Sintetize os pontos principais, variáveis e decisões desta conversa:';
+    'Sintetize os pontos principais, variaveis e decisoes desta conversa:';
+
+  // Inicializacao de Tools / Function Calling
+  FTools := TLLMToolRegistry.Create;
+  FAutoExecuteTools := True;
+  FMaxToolIterations := 10;
+  FPropagateToolExceptions := False;
+  FHasToolCalls := False;
+  SetLength(FLastToolCalls, 0);
+  FOnBeforeExecuteTool := nil;
+  FOnAfterExecuteTool := nil;
 
   FMessages := TJSONArray.Create;
   FHttpClient := THTTPClient.Create;
@@ -148,6 +213,8 @@ end;
 procedure TLLMProviderBase.ClearHistory;
 begin
   FMessages.Clear;
+  FHasToolCalls := False;
+  SetLength(FLastToolCalls, 0);
 end;
 
 procedure TLLMProviderBase.AddMessage(const ARole, AContent: string);
@@ -175,11 +242,86 @@ begin
   AddMessage('assistant', AContent);
 end;
 
+procedure TLLMProviderBase.AddToolResult(const AToolCallId, AContent: string);
+var
+  LMsg: TJSONObject;
+begin
+  LMsg := TJSONObject.Create;
+  LMsg.AddPair('role', 'tool');
+  LMsg.AddPair('tool_call_id', AToolCallId);
+  LMsg.AddPair('content', AContent);
+  FMessages.AddElement(LMsg);
+end;
+
+procedure TLLMProviderBase.RegisterTool(const ATool: ILLMTool);
+begin
+  FTools.RegisterTool(ATool);
+end;
+
+procedure TLLMProviderBase.RegisterTool(const AName, ADescription,
+  AParametersSchemaJSON: string; const AHandler: TToolCallback);
+begin
+  FTools.RegisterTool(AName, ADescription, AParametersSchemaJSON, AHandler);
+end;
+
+procedure TLLMProviderBase.RegisterTool(const AName, ADescription: string;
+  const AParametersSchema: TJSONObject; const AHandler: TToolCallback);
+begin
+  FTools.RegisterTool(AName, ADescription, AParametersSchema, AHandler);
+end;
+
+procedure TLLMProviderBase.RegisterTool(const AName, ADescription,
+  AParametersSchemaJSON: string; const AHandler: TToolJSONCallback);
+begin
+  FTools.RegisterTool(AName, ADescription, AParametersSchemaJSON, AHandler);
+end;
+
+procedure TLLMProviderBase.RegisterTool(const AName, ADescription: string;
+  const AParametersSchema: TJSONObject; const AHandler: TToolJSONCallback);
+begin
+  FTools.RegisterTool(AName, ADescription, AParametersSchema, AHandler);
+end;
+
+procedure TLLMProviderBase.RegisterFunction(const AName, ADescription,
+  AParametersSchemaJSON: string; const AHandler: TToolCallback);
+begin
+  FTools.RegisterFunction(AName, ADescription, AParametersSchemaJSON, AHandler);
+end;
+
+procedure TLLMProviderBase.RegisterFunction(const AName, ADescription: string;
+  const AParametersSchema: TJSONObject; const AHandler: TToolCallback);
+begin
+  FTools.RegisterFunction(AName, ADescription, AParametersSchema, AHandler);
+end;
+
+procedure TLLMProviderBase.RegisterFunction(const AName, ADescription,
+  AParametersSchemaJSON: string; const AHandler: TToolJSONCallback);
+begin
+  FTools.RegisterFunction(AName, ADescription, AParametersSchemaJSON, AHandler);
+end;
+
+procedure TLLMProviderBase.RegisterFunction(const AName, ADescription: string;
+  const AParametersSchema: TJSONObject; const AHandler: TToolJSONCallback);
+begin
+  FTools.RegisterFunction(AName, ADescription, AParametersSchema, AHandler);
+end;
+
+procedure TLLMProviderBase.UnregisterTool(const AName: string);
+begin
+  FTools.Unregister(AName);
+end;
+
+procedure TLLMProviderBase.ClearTools;
+begin
+  FTools.Clear;
+end;
+
 function TLLMProviderBase.BuildBodyJSON(const AModel: string; ATemp: Double;
   AMaxTok: Integer; AMsgs: TJSONArray): string;
 var
   LBody: TJSONObject;
   LOldOwned: Boolean;
+  LToolsArray: TJSONArray;
 begin
   LBody := TJSONObject.Create;
   LOldOwned := AMsgs.Owned;
@@ -195,7 +337,16 @@ begin
 
     if AMaxTok > 0 then
       LBody.AddPair('max_tokens', TJSONNumber.Create(AMaxTok));
-    LBody.AddPair('stream', false);
+
+    // Se houver tools registradas, adiciona o array 'tools' e 'tool_choice'
+    if Assigned(FTools) and (FTools.Count > 0) then
+    begin
+      LToolsArray := FTools.ToJSONArray;
+      LBody.AddPair('tools', LToolsArray);
+      LBody.AddPair('tool_choice', 'auto');
+    end;
+
+    LBody.AddPair('stream', False);
     Result := LBody.ToJSON;
   finally
     LBody.Free;
@@ -205,7 +356,7 @@ end;
 
 function TLLMProviderBase.ExtractErrorMessage(const AErrorJSON: string): string;
 var
-  LVal: TJSONValue;
+  LVal, LErrVal: TJSONValue;
   LObj, LErr: TJSONObject;
 begin
   Result := AErrorJSON;
@@ -214,79 +365,24 @@ begin
   begin
     LObj := TJSONObject(LVal);
     try
-      if LObj.TryGetValue<TJSONObject>('error', LErr) then
+      LErrVal := LObj.FindValue('error');
+      if LErrVal is TJSONObject then
+      begin
+        LErr := TJSONObject(LErrVal);
         Result := LErr.GetValue<string>('message', AErrorJSON);
+      end;
     finally
       LObj.Free;
     end;
   end
-  else
+  else if Assigned(LVal) then
     LVal.Free;
 end;
 
-function TLLMProviderBase.GetApiKey: string;
+procedure TLLMProviderBase.SetLastToolCalls(const ACalls: TLLMToolCallList);
 begin
-  Result := FApiKey;
-end;
-
-function TLLMProviderBase.GetAutoAddAssistantResponse: Boolean;
-begin
-  Result := FAutoAddAssistantResponse;
-end;
-
-function TLLMProviderBase.GetBaseURL: string;
-begin
-  Result := FBaseURL;
-end;
-
-function TLLMProviderBase.GetHistoryStrategy: THistoryStrategy;
-begin
-  Result := FHistoryStrategy;
-end;
-
-function TLLMProviderBase.GetKeepRecentMessages: Integer;
-begin
-  Result := FKeepRecentMessages;
-end;
-
-function TLLMProviderBase.GetMaxHistoryMessages: Integer;
-begin
-  Result := FMaxHistoryMessages;
-end;
-
-function TLLMProviderBase.GetMaxTokens: Integer;
-begin
-  Result := FMaxTokens;
-end;
-
-function TLLMProviderBase.GetMessages: TJSONArray;
-begin
-  Result := FMessages;
-end;
-
-function TLLMProviderBase.GetModel: string;
-begin
-  Result := FModel;
-end;
-
-function TLLMProviderBase.GetSummaryModel: string;
-begin
-  Result := FSummaryModel;
-end;
-
-function TLLMProviderBase.GetSummaryPrompt: string;
-begin
-  Result := FSummaryPrompt;
-end;
-
-function TLLMProviderBase.GetTemperature: Double;
-begin
-  Result := FTemperature;
-end;
-
-function TLLMProviderBase.GetTimeout: Integer;
-begin
-  Result := FTimeout;
+  FLastToolCalls := ACalls;
+  FHasToolCalls := Length(FLastToolCalls) > 0;
 end;
 
 function TLLMProviderBase.ExecuteRequest(const ABodyJSON: string;
@@ -297,11 +393,16 @@ var
   LStream: TStringStream;
   LVal: TJSONValue;
   LJSON, LChoice, LMsg: TJSONObject;
-  LChoices: TJSONArray;
-  LContentVal: TJSONValue;
+  LChoices, LToolCallsArr: TJSONArray;
+  LChoicesVal, LMsgVal, LToolsVal, LFuncVal, LContentVal: TJSONValue;
+  I: Integer;
+  LCallObj, LFuncObj: TJSONObject;
+  LId, LName, LArgs: string;
+  LCalls: TLLMToolCallList;
 begin
   Result := EmptyStr;
   ARawJSON := EmptyStr;
+  SetLastToolCalls([]);
 
   FHttpClient.ConnectionTimeout := FTimeout;
   FHttpClient.ResponseTimeout := FTimeout;
@@ -325,23 +426,58 @@ begin
   LVal := TJSONObject.ParseJSONValue(LSResp);
   if not(LVal is TJSONObject) then
   begin
-    LVal.Free;
+    if Assigned(LVal) then
+      LVal.Free;
     raise Exception.Create
-      ('A resposta retornada pela API não é um JSON válido.');
+      ('A resposta retornada pela API nao e um JSON valido.');
   end;
 
   LJSON := TJSONObject(LVal);
   try
-    if not LJSON.TryGetValue<TJSONArray>('choices', LChoices) or
-      (LChoices.Count = 0) then
-      raise Exception.Create('Nenhum nó "choices" retornado pela API.');
+    LChoicesVal := LJSON.FindValue('choices');
+    if not (LChoicesVal is TJSONArray) or (TJSONArray(LChoicesVal).Count = 0) then
+      raise Exception.Create('Nenhum no "choices" retornado pela API.');
 
-    LChoice := LChoices.Items[0] as TJSONObject;
-    if not LChoice.TryGetValue<TJSONObject>('message', LMsg) then
+    LChoices := TJSONArray(LChoicesVal);
+    if not (LChoices.Items[0] is TJSONObject) then
+      raise Exception.Create('Primeiro choice nao e um objeto JSON.');
+
+    LChoice := TJSONObject(LChoices.Items[0]);
+    LMsgVal := LChoice.FindValue('message');
+    if not (LMsgVal is TJSONObject) then
       raise Exception.Create('Objeto "message" ausente no choice.');
 
-    if LMsg.TryGetValue<TJSONValue>('content', LContentVal) and
-      not(LContentVal is TJSONNull) then
+    LMsg := TJSONObject(LMsgVal);
+
+    // Verifica se ha solicitacao de tool_calls
+    LToolsVal := LMsg.FindValue('tool_calls');
+    if (LToolsVal is TJSONArray) and (TJSONArray(LToolsVal).Count > 0) then
+    begin
+      LToolCallsArr := TJSONArray(LToolsVal);
+      SetLength(LCalls, LToolCallsArr.Count);
+      for I := 0 to LToolCallsArr.Count - 1 do
+      begin
+        if LToolCallsArr.Items[I] is TJSONObject then
+        begin
+          LCallObj := TJSONObject(LToolCallsArr.Items[I]);
+          LId := LCallObj.GetValue<string>('id', EmptyStr);
+          LName := EmptyStr;
+          LArgs := EmptyStr;
+          LFuncVal := LCallObj.FindValue('function');
+          if LFuncVal is TJSONObject then
+          begin
+            LFuncObj := TJSONObject(LFuncVal);
+            LName := LFuncObj.GetValue<string>('name', EmptyStr);
+            LArgs := LFuncObj.GetValue<string>('arguments', EmptyStr);
+          end;
+          LCalls[I] := TLLMToolCall.Create(LId, LName, LArgs);
+        end;
+      end;
+      SetLastToolCalls(LCalls);
+    end;
+
+    LContentVal := LMsg.FindValue('content');
+    if (LContentVal <> nil) and not(LContentVal is TJSONNull) then
       Result := LContentVal.Value
     else
       Result := EmptyStr;
@@ -354,24 +490,52 @@ procedure TLLMProviderBase.ApplySlidingWindow;
 var
   LSystemOffset: Integer;
   LVal: TJSONValue;
+  LItemObj: TJSONObject;
 begin
   if (FMaxHistoryMessages <= 0) or (FMessages.Count <= FMaxHistoryMessages) then
     Exit;
 
   LSystemOffset := 0;
-  // Protege a instrução de sistema no topo caso exista
+  // Protege a instrucao de sistema no topo caso exista
   if (FMessages.Count > 0) and (FMessages.Items[0] is TJSONObject) then
   begin
-    if TJSONObject(FMessages.Items[0]).GetValue<string>('role', EmptyStr) = 'system'
-    then
+    if TJSONObject(FMessages.Items[0]).GetValue<string>('role', EmptyStr) = 'system' then
       LSystemOffset := 1;
   end;
 
   while (FMessages.Count > FMaxHistoryMessages) and
     (FMessages.Count > LSystemOffset) do
   begin
+    LItemObj := FMessages.Items[LSystemOffset] as TJSONObject;
+
+    // Se estiver removendo um assistant que chamou ferramentas, remove tambem as respostas 'tool' correspondentes
+    if (LItemObj.GetValue<string>('role', EmptyStr) = 'assistant') and
+       (LItemObj.FindValue('tool_calls') <> nil) then
+    begin
+      LVal := FMessages.Remove(LSystemOffset);
+      LVal.Free;
+
+      // Remove todas as mensagens 'tool' que se seguiam a ele
+      while (FMessages.Count > LSystemOffset) and (FMessages.Items[LSystemOffset] is TJSONObject) and
+            (TJSONObject(FMessages.Items[LSystemOffset]).GetValue<string>('role', EmptyStr) = 'tool') do
+      begin
+        LVal := FMessages.Remove(LSystemOffset);
+        LVal.Free;
+      end;
+    end
+    else
+    begin
+      LVal := FMessages.Remove(LSystemOffset);
+      LVal.Free;
+    end;
+  end;
+
+  // Garante que nao sobrou mensagem 'tool' orfa sem o seu assistant chamador
+  while (FMessages.Count > LSystemOffset) and (FMessages.Items[LSystemOffset] is TJSONObject) and
+        (TJSONObject(FMessages.Items[LSystemOffset]).GetValue<string>('role', EmptyStr) = 'tool') do
+  begin
     LVal := FMessages.Remove(LSystemOffset);
-    LVal.Free; // Libera o objeto removido para evitar memory leak
+    LVal.Free;
   end;
 end;
 
@@ -394,18 +558,27 @@ begin
 
   LCountToSummarize := (FMessages.Count - LStartIdx) - FKeepRecentMessages;
   if LCountToSummarize <= 0 then
-    Exit; // Sem mensagens suficientes para condensar
+    Exit;
 
-  // 1. Monta o histórico a ser resumido
+  // 1. Monta o historico a ser resumido
   LTranscript := EmptyStr;
   for I := LStartIdx to (LStartIdx + LCountToSummarize - 1) do
   begin
     if FMessages.Items[I] is TJSONObject then
     begin
       LItem := TJSONObject(FMessages.Items[I]);
-      LTranscript := LTranscript + Format('[%s]: %s' + sLineBreak,
-        [LItem.GetValue<string>('role', EmptyStr),
-        LItem.GetValue<string>('content', EmptyStr)]);
+
+      if LItem.FindValue('tool_calls') <> nil then
+        LTranscript := LTranscript + Format('[assistant (chamada de ferramentas)]: %s' + sLineBreak,
+          [LItem.FindValue('tool_calls').ToJSON])
+      else if LItem.GetValue<string>('role', EmptyStr) = 'tool' then
+        LTranscript := LTranscript + Format('[resultado da ferramenta id %s]: %s' + sLineBreak,
+          [LItem.GetValue<string>('tool_call_id', EmptyStr),
+           LItem.GetValue<string>('content', EmptyStr)])
+      else
+        LTranscript := LTranscript + Format('[%s]: %s' + sLineBreak,
+          [LItem.GetValue<string>('role', EmptyStr),
+          LItem.GetValue<string>('content', EmptyStr)]);
     end;
   end;
 
@@ -419,9 +592,9 @@ begin
     LSummarySys := TJSONObject.Create;
     LSummarySys.AddPair('role', 'system');
     LSummarySys.AddPair('content',
-      'Você é um assistente encarregado de compactar históricos de chat. ' +
-      'Gere um resumo enxuto e objetivo dos tópicos discutidos, decisões tomadas e dados informados, '
-      + 'para que o contexto não se perca.');
+      'Voce e um assistente encarregado de compactar historicos de chat. ' +
+      'Gere um resumo enxuto e objetivo dos topicos discutidos, decisoes tomadas e dados informados, '
+      + 'para que o contexto nao se perca.');
     LReqMsgs.AddElement(LSummarySys);
 
     LSummaryUser := TJSONObject.Create;
@@ -439,21 +612,21 @@ begin
   if LSummaryText.Trim.IsEmpty then
     Exit;
 
-  // 3. Reconstrói o FMessages de forma segura e sem vazamento de memória
+  // 3. Reconstroi o FMessages
   LNewMessages := TJSONArray.Create;
 
   // Preserva o System Prompt original no topo
   if LHasSystem then
     LNewMessages.AddElement(FMessages.RemoveFirst);
 
-  // Insere o resumo gerado logo após as instruções de sistema
+  // Insere o resumo gerado
   LSummaryBlock := TJSONObject.Create;
   LSummaryBlock.AddPair('role', 'system');
   LSummaryBlock.AddPair('content', '[RESUMO DO HISTORICO ANTERIOR]:' +
     sLineBreak + LSummaryText);
   LNewMessages.AddElement(LSummaryBlock);
 
-  // Libera da memória as mensagens que foram condensadas
+  // Libera da memoria as mensagens condensadas
   for I := 1 to LCountToSummarize do
     FMessages.RemoveFirstAndFree;
 
@@ -461,7 +634,6 @@ begin
   while FMessages.Count > 0 do
     LNewMessages.AddElement(FMessages.RemoveFirst);
 
-  // Substitui o array de mensagens
   FMessages.Free;
   FMessages := LNewMessages;
 end;
@@ -473,7 +645,6 @@ begin
       ApplySlidingWindow;
     hsSummarize:
       begin
-        // Se ultrapassou o limite, condensa as antigas
         if (FMaxHistoryMessages > 0) and (FMessages.Count > FMaxHistoryMessages)
         then
           SummarizeHistory;
@@ -484,15 +655,102 @@ end;
 function TLLMProviderBase.Send(out RawJSON: string): string;
 var
   LBodyStr: string;
+  LIteration: Integer;
+  LToolIndex: Integer;
+  LToolCall: TLLMToolCall;
+  LTool: ILLMTool;
+  LToolResult: string;
+  LVal: TJSONValue;
+  LJSON, LChoice: TJSONObject;
+  LChoices: TJSONArray;
+  LChoicesVal, LMsgVal: TJSONValue;
+  LSuccess: Boolean;
 begin
-  // Executa a estratégia de redução de histórico antes do envio
-  ProcessHistory;
+  LIteration := 0;
 
-  LBodyStr := BuildBodyJSON(FModel, FTemperature, FMaxTokens, FMessages);
-  Result := ExecuteRequest(LBodyStr, RawJSON);
+  while True do
+  begin
+    ProcessHistory;
 
-  if FAutoAddAssistantResponse and (Result <> EmptyStr) then
-    AddAssistant(Result);
+    LBodyStr := BuildBodyJSON(FModel, FTemperature, FMaxTokens, FMessages);
+    Result := ExecuteRequest(LBodyStr, RawJSON);
+
+    // Se nao foram solicitadas chamadas de ferramentas, obtivemos a resposta final
+    if not FHasToolCalls then
+    begin
+      if FAutoAddAssistantResponse and (Result <> EmptyStr) then
+        AddAssistant(Result);
+      Break;
+    end;
+
+    // Se houve tool_calls, anexa a mensagem do assistente com os tool_calls ao historico
+    LVal := TJSONObject.ParseJSONValue(RawJSON);
+    if LVal is TJSONObject then
+    begin
+      LJSON := TJSONObject(LVal);
+      try
+        LChoicesVal := LJSON.FindValue('choices');
+        if (LChoicesVal is TJSONArray) and (TJSONArray(LChoicesVal).Count > 0) then
+        begin
+          LChoices := TJSONArray(LChoicesVal);
+          if LChoices.Items[0] is TJSONObject then
+          begin
+            LChoice := TJSONObject(LChoices.Items[0]);
+            LMsgVal := LChoice.FindValue('message');
+            if LMsgVal is TJSONObject then
+              FMessages.AddElement(LMsgVal.Clone as TJSONObject);
+          end;
+        end;
+      finally
+        LJSON.Free;
+      end;
+    end;
+
+    // Se a execucao automatica estiver desativada (Modo Manual), encerra aqui para o usuario responder
+    if not FAutoExecuteTools then
+      Break;
+
+    // Modo Automatico: Verifica limite de iteracoes para evitar loops infinitos
+    Inc(LIteration);
+    if LIteration > FMaxToolIterations then
+      raise ELLMMaxToolIterationsException.CreateFmt(
+        'Limite maximo de iteracoes de ferramentas atingido (%d)', [FMaxToolIterations]);
+
+    // Executa as ferramentas requisitadas pelo modelo
+    for LToolIndex := 0 to Length(FLastToolCalls) - 1 do
+    begin
+      LToolCall := FLastToolCalls[LToolIndex];
+
+      if Assigned(FOnBeforeExecuteTool) then
+        FOnBeforeExecuteTool(LToolCall);
+
+      LSuccess := True;
+      LToolResult := EmptyStr;
+
+      try
+        if FTools.Find(LToolCall.Name, LTool) then
+          LToolResult := LTool.Execute(LToolCall.Arguments)
+        else
+          raise ELLMToolNotFoundException.CreateFmt('Ferramenta "%s" nao encontrada.', [LToolCall.Name]);
+      except
+        on E: Exception do
+        begin
+          LSuccess := False;
+          if FPropagateToolExceptions then
+            raise
+          else
+            LToolResult := Format('{"error":"%s"}', [E.Message.Replace('"', '\"')]);
+        end;
+      end;
+
+      if Assigned(FOnAfterExecuteTool) then
+        FOnAfterExecuteTool(LToolCall, LToolResult, LSuccess);
+
+      AddToolResult(LToolCall.Id, LToolResult);
+    end;
+
+    // O loop continua, enviando o historico com as respostas das ferramentas de volta ao modelo
+  end;
 end;
 
 function TLLMProviderBase.Send: string;
@@ -500,6 +758,111 @@ var
   LDummy: string;
 begin
   Result := Send(LDummy);
+end;
+
+function TLLMProviderBase.GetApiKey: string;
+begin
+  Result := FApiKey;
+end;
+
+function TLLMProviderBase.GetAutoAddAssistantResponse: Boolean;
+begin
+  Result := FAutoAddAssistantResponse;
+end;
+
+function TLLMProviderBase.GetAutoExecuteTools: Boolean;
+begin
+  Result := FAutoExecuteTools;
+end;
+
+function TLLMProviderBase.GetBaseURL: string;
+begin
+  Result := FBaseURL;
+end;
+
+function TLLMProviderBase.GetHasToolCalls: Boolean;
+begin
+  Result := FHasToolCalls;
+end;
+
+function TLLMProviderBase.GetHistoryStrategy: THistoryStrategy;
+begin
+  Result := FHistoryStrategy;
+end;
+
+function TLLMProviderBase.GetKeepRecentMessages: Integer;
+begin
+  Result := FKeepRecentMessages;
+end;
+
+function TLLMProviderBase.GetLastToolCalls: TLLMToolCallList;
+begin
+  Result := FLastToolCalls;
+end;
+
+function TLLMProviderBase.GetMaxHistoryMessages: Integer;
+begin
+  Result := FMaxHistoryMessages;
+end;
+
+function TLLMProviderBase.GetMaxTokens: Integer;
+begin
+  Result := FMaxTokens;
+end;
+
+function TLLMProviderBase.GetMaxToolIterations: Integer;
+begin
+  Result := FMaxToolIterations;
+end;
+
+function TLLMProviderBase.GetMessages: TJSONArray;
+begin
+  Result := FMessages;
+end;
+
+function TLLMProviderBase.GetModel: string;
+begin
+  Result := FModel;
+end;
+
+function TLLMProviderBase.GetOnAfterExecuteTool: TOnAfterExecuteToolEvent;
+begin
+  Result := FOnAfterExecuteTool;
+end;
+
+function TLLMProviderBase.GetOnBeforeExecuteTool: TOnBeforeExecuteToolEvent;
+begin
+  Result := FOnBeforeExecuteTool;
+end;
+
+function TLLMProviderBase.GetPropagateToolExceptions: Boolean;
+begin
+  Result := FPropagateToolExceptions;
+end;
+
+function TLLMProviderBase.GetSummaryModel: string;
+begin
+  Result := FSummaryModel;
+end;
+
+function TLLMProviderBase.GetSummaryPrompt: string;
+begin
+  Result := FSummaryPrompt;
+end;
+
+function TLLMProviderBase.GetTemperature: Double;
+begin
+  Result := FTemperature;
+end;
+
+function TLLMProviderBase.GetTimeout: Integer;
+begin
+  Result := FTimeout;
+end;
+
+function TLLMProviderBase.GetTools: ILLMToolRegistry;
+begin
+  Result := FTools;
 end;
 
 procedure TLLMProviderBase.SetApiKey(const Value: string);
@@ -510,6 +873,11 @@ end;
 procedure TLLMProviderBase.SetAutoAddAssistantResponse(const Value: Boolean);
 begin
   FAutoAddAssistantResponse := Value;
+end;
+
+procedure TLLMProviderBase.SetAutoExecuteTools(const Value: Boolean);
+begin
+  FAutoExecuteTools := Value;
 end;
 
 procedure TLLMProviderBase.SetBaseURL(const Value: string);
@@ -537,9 +905,31 @@ begin
   FMaxTokens := Value;
 end;
 
+procedure TLLMProviderBase.SetMaxToolIterations(const Value: Integer);
+begin
+  FMaxToolIterations := Value;
+end;
+
 procedure TLLMProviderBase.SetModel(const Value: string);
 begin
   FModel := Value;
+end;
+
+procedure TLLMProviderBase.SetOnAfterExecuteTool(
+  const Value: TOnAfterExecuteToolEvent);
+begin
+  FOnAfterExecuteTool := Value;
+end;
+
+procedure TLLMProviderBase.SetOnBeforeExecuteTool(
+  const Value: TOnBeforeExecuteToolEvent);
+begin
+  FOnBeforeExecuteTool := Value;
+end;
+
+procedure TLLMProviderBase.SetPropagateToolExceptions(const Value: Boolean);
+begin
+  FPropagateToolExceptions := Value;
 end;
 
 procedure TLLMProviderBase.SetSummaryModel(const Value: string);

@@ -1,4 +1,4 @@
-program Delphi4AI.Tests;
+﻿program Delphi4AI.Tests;
 
 uses
   System.SysUtils,
@@ -8,11 +8,13 @@ uses
   TextTestRunner,
   Utils.JSONArray in '..\utils\Utils.JSONArray.pas',
   LLM.HistoryStrategy in '..\llm\LLM.HistoryStrategy.pas',
+  LLM.Tools in '..\llm\LLM.Tools.pas',
   LLM.Interfaces in '..\llm\LLM.Interfaces.pas',
   LLM.Base in '..\llm\LLM.Base.pas',
   LLM.MockProvider in 'Mocks\LLM.MockProvider.pas',
   Test.Utils.JSONArray in 'Test.Utils.JSONArray.pas',
   Test.LLM.Base in 'Test.LLM.Base.pas',
+  Test.LLM.Tools in 'Test.LLM.Tools.pas',
   LLM.Exceptions in '..\llm\LLM.Exceptions.pas';
 
 {$R *.res}

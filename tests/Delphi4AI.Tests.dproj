@@ -76,11 +76,13 @@
         </DelphiCompile>
         <DCCReference Include="..\utils\Utils.JSONArray.pas"/>
         <DCCReference Include="..\llm\LLM.HistoryStrategy.pas"/>
+        <DCCReference Include="..\llm\LLM.Tools.pas"/>
         <DCCReference Include="..\llm\LLM.Interfaces.pas"/>
         <DCCReference Include="..\llm\LLM.Base.pas"/>
         <DCCReference Include="Mocks\LLM.MockProvider.pas"/>
         <DCCReference Include="Test.Utils.JSONArray.pas"/>
         <DCCReference Include="Test.LLM.Base.pas"/>
+        <DCCReference Include="Test.LLM.Tools.pas"/>
         <DCCReference Include="..\llm\LLM.Exceptions.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

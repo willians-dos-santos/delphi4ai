@@ -14,8 +14,10 @@ uses
   Vcl.Dialogs,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
+  System.JSON,
   LLM.Interfaces,
   LLM.HistoryStrategy,
+  LLM.Tools,
   LLM.Exceptions;
 
 type
@@ -44,7 +46,8 @@ type
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure btnEnviarClick(Sender: TObject);
-    procedure edtInputKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure edtInputKeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
     procedure btnLimparClick(Sender: TObject);
     procedure btnAplicarClick(Sender: TObject);
     procedure cbbStrategyChange(Sender: TObject);
@@ -70,6 +73,10 @@ uses
 
 { TForm1 }
 
+const
+  HISTORY_STRATEGY: array [0 .. 2] of THistoryStrategy = (hsSlidingWindow,
+    hsSummarize, hsNone);
+
 procedure TForm1.FormCreate(Sender: TObject);
 begin
   InitProvider;
@@ -77,32 +84,82 @@ end;
 
 procedure TForm1.FormDestroy(Sender: TObject);
 begin
-//  FLLM.Free;
+  // FLLM.Free;
 end;
 
 procedure TForm1.InitProvider;
 begin
+  FLLM := CreateLLMProvider(Trim(edtApiKey.Text), Trim(edtBaseURL.Text),
+    Trim(edtModel.Text));
 
-  FLLM := CreateLLMProvider(
-    Trim(edtApiKey.Text),
-    Trim(edtBaseURL.Text),
-    Trim(edtModel.Text)
-  );
-
-  case cbbStrategy.ItemIndex of
-    0: FLLM.HistoryStrategy := hsSlidingWindow;
-    1: FLLM.HistoryStrategy := hsSummarize;
-    2: FLLM.HistoryStrategy := hsNone;
-  end;
-
+  FLLM.HistoryStrategy := HISTORY_STRATEGY[cbbStrategy.ItemIndex];
   FLLM.MaxHistoryMessages := 10;
   FLLM.KeepRecentMessages := 4;
 
   if not Trim(edtSystemPrompt.Text).IsEmpty then
     FLLM.AddSystem(Trim(edtSystemPrompt.Text));
 
+  // Registra funcoes de exemplo (Tools / Function Calling)
+  FLLM.RegisterFunction('obter_hora_atual', 'Retorna a data e hora atual do sistema local',
+    '{"type":"object","properties":{}}',
+    function(const AArgs: string): string
+    begin
+      Result := Format('{"data_hora": "%s"}', [DateTimeToStr(Now)]);
+    end);
+
+  FLLM.RegisterFunction('consultar_cotacao_moeda', 'Retorna a cotacao estimada de uma moeda em Reais (BRL)',
+    '{"type":"object","properties":{"moeda":{"type":"string","description":"Sigla da moeda, ex: USD, EUR, BTC"}},"required":["moeda"]}',
+    function(const AArgs: string): string
+    var
+      LArgs: TJSONObject;
+      LMoeda: string;
+      LCotacao: Double;
+    begin
+      LArgs := TJSONObject.ParseJSONValue(AArgs) as TJSONObject;
+      try
+        LMoeda := 'USD';
+        if Assigned(LArgs) then
+          LMoeda := UpperCase(LArgs.GetValue<string>('moeda', 'USD'));
+
+        if LMoeda = 'EUR' then
+          LCotacao := 6.10
+        else if LMoeda = 'BTC' then
+          LCotacao := 350000.00
+        else
+          LCotacao := 5.45;
+
+        Result := Format('{"moeda":"%s","cotacao_brl":%.2f}', [LMoeda, LCotacao]);
+      finally
+        LArgs.Free;
+      end;
+    end);
+
+  // Notificacoes visuais de execucao de tools
+  FLLM.OnBeforeExecuteTool :=
+    procedure(const ACall: TLLMToolCall)
+    begin
+      TThread.Synchronize(nil,
+        procedure
+        begin
+          AppendChat('Ferramenta (Chamada)',
+            Format('Funcao "%s" invocada pelo modelo com argumentos: %s', [ACall.Name, ACall.Arguments]));
+        end);
+    end;
+
+  FLLM.OnAfterExecuteTool :=
+    procedure(const ACall: TLLMToolCall; const AResult: string; const ASuccess: Boolean)
+    begin
+      TThread.Synchronize(nil,
+        procedure
+        begin
+          AppendChat('Ferramenta (Retorno)',
+            Format('Retorno de "%s": %s', [ACall.Name, AResult]));
+        end);
+    end;
+
   memChat.Clear;
-  AppendChat('Sistema', 'Conversa iniciada com o modelo "' + FLLM.Model + '". Digite uma mensagem abaixo para interagir.');
+  AppendChat('Sistema', 'Conversa iniciada com o modelo "' + FLLM.Model +
+    '". Tools de exemplo registradas: [obter_hora_atual, consultar_cotacao_moeda].');
   UpdateStatus;
 end;
 
@@ -112,7 +169,6 @@ begin
   memChat.Lines.Add(AText);
   memChat.Lines.Add(EmptyStr);
 
-  // Rola o memo para a última linha adicionada
   SendMessage(memChat.Handle, EM_SCROLLCARET, 0, 0);
 end;
 
@@ -121,8 +177,9 @@ begin
   if not ACustomMsg.IsEmpty then
     lblStatus.Caption := ACustomMsg
   else if Assigned(FLLM) then
-    lblStatus.Caption := Format('Mensagens ativas no histórico: %d (Estratégia: %s)',
-      [FLLM.Messages.Count, cbbStrategy.Text])
+    lblStatus.Caption :=
+      Format('Mensagens ativas no historico: %d (Estrategia: %s, Tools: %d)',
+      [FLLM.Messages.Count, cbbStrategy.Text, FLLM.Tools.Count])
   else
     lblStatus.Caption := 'Pronto';
 end;
@@ -132,12 +189,7 @@ begin
   if not Assigned(FLLM) then
     Exit;
 
-  case cbbStrategy.ItemIndex of
-    0: FLLM.HistoryStrategy := hsSlidingWindow;
-    1: FLLM.HistoryStrategy := hsSummarize;
-    2: FLLM.HistoryStrategy := hsNone;
-  end;
-
+  FLLM.HistoryStrategy := HISTORY_STRATEGY[cbbStrategy.ItemIndex];
   UpdateStatus;
 end;
 
@@ -156,7 +208,7 @@ begin
   end;
 
   memChat.Clear;
-  AppendChat('Sistema', 'Histórico de mensagens limpo.');
+  AppendChat('Sistema', 'Historico de mensagens limpo.');
   UpdateStatus;
 end;
 
@@ -183,23 +235,24 @@ begin
   if LUserMsg.IsEmpty then
     Exit;
 
-  // Atualiza credenciais do provedor caso o usuário tenha alterado nos campos
+  // Atualiza credenciais do provedor caso o usuario tenha alterado nos campos
   FLLM.ApiKey := Trim(edtApiKey.Text);
   FLLM.BaseURL := Trim(edtBaseURL.Text);
   FLLM.Model := Trim(edtModel.Text);
 
-  if FLLM.ApiKey.IsEmpty and (Pos('localhost', FLLM.BaseURL) = 0) and (Pos('127.0.0.1', FLLM.BaseURL) = 0) then
+  if FLLM.ApiKey.IsEmpty and (Pos('localhost', FLLM.BaseURL) = 0) and
+    (Pos('127.0.0.1', FLLM.BaseURL) = 0) then
   begin
     ShowMessage('Por favor, informe sua API Key antes de enviar uma mensagem.');
     edtApiKey.SetFocus;
     Exit;
   end;
 
-  // 1. Exibe a mensagem do usuário no chat
-  AppendChat('Você', LUserMsg);
+  // 1. Exibe a mensagem do usuario no chat
+  AppendChat('Voce', LUserMsg);
   edtInput.Clear;
 
-  // 2. Adiciona ao histórico do provedor
+  // 2. Adiciona ao historico do provedor
   FLLM.AddUser(LUserMsg);
 
   // 3. Desabilita controles e mostra feedback de carregamento
@@ -207,7 +260,7 @@ begin
   edtInput.Enabled := False;
   UpdateStatus('Aguardando resposta da IA...');
 
-  // 4. Executa a requisição assincronamente para não congelar a interface VCL
+  // 4. Executa a requisicao assincronamente para nao congelar a interface VCL
   TTask.Run(
     procedure
     var
