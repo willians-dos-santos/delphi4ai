@@ -1,4 +1,4 @@
-﻿unit Unit1;
+unit Unit1;
 
 interface
 
@@ -67,7 +67,8 @@ implementation
 
 uses
   System.Threading,
-  LLM.Factory;
+  LLM.Factory,
+  uWeatherTool;
 
 {$R *.dfm}
 
@@ -134,6 +135,8 @@ begin
       end;
     end);
 
+  FLLM.RegisterTool(TWeatherAPI);
+
   // Notificacoes visuais de execucao de tools
   FLLM.OnBeforeExecuteTool :=
     procedure(const ACall: TLLMToolCall)
@@ -158,8 +161,8 @@ begin
     end;
 
   memChat.Clear;
-  AppendChat('Sistema', 'Conversa iniciada com o modelo "' + FLLM.Model +
-    '". Tools de exemplo registradas: [obter_hora_atual, consultar_cotacao_moeda].');
+  AppendChat('Sistema', Format('Conversa iniciada com o modelo "%s". Tools registradas: [%s].',
+    [FLLM.Model, string.Join(', ', FLLM.Tools.GetNames)]));
   UpdateStatus;
 end;
 

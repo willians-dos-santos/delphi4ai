@@ -82,10 +82,13 @@
         <DCCReference Include="rtl.dcp"/>
         <DCCReference Include="llm\LLM.Interfaces.pas"/>
         <DCCReference Include="llm\LLM.HistoryStrategy.pas"/>
+        <DCCReference Include="llm\LLM.Tools.pas"/>
         <DCCReference Include="llm\LLM.Base.pas"/>
         <DCCReference Include="utils\Utils.JSONArray.pas"/>
         <DCCReference Include="llm\LLM.Exceptions.pas"/>
         <DCCReference Include="app\LLM.Factory.pas"/>
+        <DCCReference Include="llm\LLM.Tools.Attributes.pas"/>
+        <DCCReference Include="llm\LLM.Tools.RTTI.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

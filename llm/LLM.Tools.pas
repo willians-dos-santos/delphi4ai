@@ -1,4 +1,4 @@
-﻿unit LLM.Tools;
+unit LLM.Tools;
 
 interface
 
@@ -77,8 +77,11 @@ type
     function Find(const AName: string; out ATool: ILLMTool): Boolean;
     function Contains(const AName: string): Boolean;
     function Count: Integer;
+    function GetNames: TArray<string>;
     procedure Clear;
     function ToJSONArray: TJSONArray;
+
+    property Names: TArray<string> read GetNames;
   end;
 
   /// <summary>
@@ -136,8 +139,11 @@ type
     function Find(const AName: string; out ATool: ILLMTool): Boolean;
     function Contains(const AName: string): Boolean;
     function Count: Integer;
+    function GetNames: TArray<string>;
     procedure Clear;
     function ToJSONArray: TJSONArray;
+
+    property Names: TArray<string> read GetNames;
   end;
 
 implementation
@@ -325,6 +331,11 @@ end;
 function TLLMToolRegistry.Count: Integer;
 begin
   Result := FTools.Count;
+end;
+
+function TLLMToolRegistry.GetNames: TArray<string>;
+begin
+  Result := FTools.Keys.ToArray;
 end;
 
 function TLLMToolRegistry.Find(const AName: string; out ATool: ILLMTool): Boolean;

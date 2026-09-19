@@ -56,3 +56,5 @@ ModelSupport_*/
 
 # TestInsight / Frameworks de testes (opcional)
 TestInsightSettings.ini
+
+env.ini

@@ -8,7 +8,10 @@ uses
   LLM.Base in '..\..\llm\LLM.Base.pas',
   Utils.JSONArray in '..\..\utils\Utils.JSONArray.pas',
   Unit1 in 'Unit1.pas' {Form1},
-  LLM.Factory in '..\..\app\LLM.Factory.pas';
+  LLM.Factory in '..\..\app\LLM.Factory.pas',
+  uWeatherTool in 'uWeatherTool.pas',
+  LLM.Tools.Attributes in '..\..\llm\LLM.Tools.Attributes.pas',
+  LLM.Tools.RTTI in '..\..\llm\LLM.Tools.RTTI.pas';
 
 {$R *.res}
 

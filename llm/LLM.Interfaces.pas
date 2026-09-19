@@ -1,4 +1,4 @@
-﻿unit LLM.Interfaces;
+unit LLM.Interfaces;
 
 interface
 uses
@@ -73,7 +73,8 @@ type
     procedure RegisterFunction(const AName, ADescription: string; const AParametersSchema: TJSONObject; const AHandler: TToolCallback); overload;
     procedure RegisterFunction(const AName, ADescription, AParametersSchemaJSON: string; const AHandler: TToolJSONCallback); overload;
     procedure RegisterFunction(const AName, ADescription: string; const AParametersSchema: TJSONObject; const AHandler: TToolJSONCallback); overload;
-
+    procedure RegisterTool(const AClass: TClass); overload;
+    procedure RegisterTool(const AInstance: TObject); overload;
     procedure UnregisterTool(const AName: string);
     procedure ClearTools;
 

@@ -1,4 +1,4 @@
-﻿unit LLM.Base;
+unit LLM.Base;
 
 interface
 
@@ -6,6 +6,7 @@ uses
   LLM.Interfaces,
   LLM.HistoryStrategy,
   LLM.Tools,
+  LLM.Tools.RTTI,
   System.SysUtils,
   System.Classes,
   System.JSON,
@@ -37,6 +38,7 @@ type
 
     // Configuracoes e estado de Tools / Function Calling
     FTools: ILLMToolRegistry;
+    FRTTIManager: TLLMRTTIManager;
     FAutoExecuteTools: Boolean;
     FMaxToolIterations: Integer;
     FPropagateToolExceptions: Boolean;
@@ -122,6 +124,8 @@ type
     procedure RegisterFunction(const AName, ADescription, AParametersSchemaJSON: string; const AHandler: TToolJSONCallback); overload;
     procedure RegisterFunction(const AName, ADescription: string; const AParametersSchema: TJSONObject; const AHandler: TToolJSONCallback); overload;
 
+    procedure RegisterTool(const AClass: TClass); overload;
+    procedure RegisterTool(const AInstance: TObject); overload;
     procedure UnregisterTool(const AName: string);
     procedure ClearTools;
     procedure AddToolResult(const AToolCallId, AContent: string);
@@ -189,6 +193,7 @@ begin
 
   // Inicializacao de Tools / Function Calling
   FTools := TLLMToolRegistry.Create;
+  FRTTIManager := TLLMRTTIManager.Create(FTools);
   FAutoExecuteTools := True;
   FMaxToolIterations := 10;
   FPropagateToolExceptions := False;
@@ -205,6 +210,7 @@ end;
 
 destructor TLLMProviderBase.Destroy;
 begin
+  FRTTIManager.Free;
   FHttpClient.Free;
   FMessages.Free;
   inherited;
@@ -314,6 +320,7 @@ end;
 procedure TLLMProviderBase.ClearTools;
 begin
   FTools.Clear;
+  FRTTIManager.ClearTools;
 end;
 
 function TLLMProviderBase.BuildBodyJSON(const AModel: string; ATemp: Double;
@@ -950,6 +957,16 @@ end;
 procedure TLLMProviderBase.SetTimeout(const Value: Integer);
 begin
   FTimeout := Value;
+end;
+
+procedure TLLMProviderBase.RegisterTool(const AClass: TClass);
+begin
+  FRTTIManager.RegisterTool(AClass);
+end;
+
+procedure TLLMProviderBase.RegisterTool(const AInstance: TObject);
+begin
+  FRTTIManager.RegisterTool(AInstance);
 end;
 
 end.

@@ -1,4 +1,4 @@
-﻿unit Test.LLM.Tools;
+unit Test.LLM.Tools;
 
 interface
 
@@ -9,10 +9,22 @@ uses
   System.JSON,
   LLM.Interfaces,
   LLM.Tools,
+  LLM.Tools.Attributes,
   LLM.Exceptions,
   LLM.MockProvider;
 
 type
+  TDummyCalcTool = class
+  public
+    [TLLMTool('somar', 'Soma dois numeros')]
+    function Somar([TLLMParam('Primeiro numero')] A: Integer;
+      [TLLMParam('Segundo numero')] B: Integer): string;
+
+    [TLLMTool('formatar_texto', 'Formata um texto')]
+    function FormatarTexto([TLLMParam('Texto base')] Texto: string;
+      [TLLMParam('Se maiusculo', False)] Maiusculo: Boolean): string;
+  end;
+
   TTestLLMTools = class(TTestCase)
   private
     FProvider: TMockLLMProvider;
@@ -25,6 +37,10 @@ type
     procedure TestRegisterTool_JSONObjectSchema;
     procedure TestRegisterTool_StringCallback;
     procedure TestRegisterTool_JSONCallback;
+    procedure TestRegisterTool_RTTI_ClassRegistration;
+    procedure TestRegisterTool_RTTI_InstanceRegistration;
+    procedure TestRegisterTool_RTTI_Execution;
+    procedure TestGetNames_ReturnsRegisteredToolNames;
     procedure TestBuildBodyJSON_IncludesToolsArray;
     procedure TestExecuteRequest_ParsesToolCalls;
     procedure TestAutoExecuteTools_FullLoop;
@@ -84,6 +100,118 @@ begin
   CheckEquals('obter_tempo', LTool.Name);
   CheckEquals('Consulta a previsao do tempo', LTool.Description);
   CheckNotNull(LTool.ParametersSchema);
+end;
+
+{ TDummyCalcTool }
+
+function TDummyCalcTool.Somar(A, B: Integer): string;
+begin
+  Result := Format('{"resultado":%d}', [A + B]);
+end;
+
+function TDummyCalcTool.FormatarTexto(Texto: string; Maiusculo: Boolean): string;
+begin
+  if Maiusculo then
+    Result := UpperCase(Texto)
+  else
+    Result := LowerCase(Texto);
+end;
+
+procedure TTestLLMTools.TestRegisterTool_RTTI_ClassRegistration;
+var
+  LToolSomar, LToolFormat: ILLMTool;
+  LReq: TJSONArray;
+begin
+  FProvider.RegisterTool(TDummyCalcTool);
+
+  CheckEquals(2, FProvider.Tools.Count, 'Deve registrar 2 ferramentas da classe TDummyCalcTool');
+  CheckTrue(FProvider.Tools.Find('somar', LToolSomar), 'Deve encontrar a ferramenta somar');
+  CheckTrue(FProvider.Tools.Find('formatar_texto', LToolFormat), 'Deve encontrar a ferramenta formatar_texto');
+
+  CheckEquals('somar', LToolSomar.Name);
+  CheckEquals('Soma dois numeros', LToolSomar.Description);
+
+  // Verifica required em somar (ambos A e B)
+  LReq := LToolSomar.ParametersSchema.FindValue('required') as TJSONArray;
+  CheckNotNull(LReq, 'Deve conter array required');
+  CheckEquals(2, LReq.Count, 'Deve exigir 2 parametros obrigatorios');
+
+  // Verifica required em formatar_texto (apenas texto, maiusculo eh False no attribute)
+  LReq := LToolFormat.ParametersSchema.FindValue('required') as TJSONArray;
+  CheckNotNull(LReq, 'Deve conter array required');
+  CheckEquals(1, LReq.Count, 'Deve exigir 1 parametro obrigatorio');
+  CheckEquals('texto', LReq.Items[0].Value);
+end;
+
+procedure TTestLLMTools.TestRegisterTool_RTTI_InstanceRegistration;
+var
+  LInstance: TDummyCalcTool;
+  LTool: ILLMTool;
+begin
+  LInstance := TDummyCalcTool.Create;
+  try
+    FProvider.RegisterTool(LInstance);
+
+    CheckEquals(2, FProvider.Tools.Count);
+    CheckTrue(FProvider.Tools.Find('somar', LTool));
+    CheckEquals('{"resultado":42}', LTool.Execute('{"a":40,"b":2}'));
+  finally
+    LInstance.Free;
+  end;
+end;
+
+procedure TTestLLMTools.TestRegisterTool_RTTI_Execution;
+var
+  LToolSomar, LToolFormat: ILLMTool;
+  LRes: string;
+begin
+  FProvider.RegisterTool(TDummyCalcTool);
+
+  CheckTrue(FProvider.Tools.Find('somar', LToolSomar));
+  CheckTrue(FProvider.Tools.Find('formatar_texto', LToolFormat));
+
+  // 1. Execucao com argumentos normais
+  LRes := LToolSomar.Execute('{"a":10,"b":25}');
+  CheckEquals('{"resultado":35}', LRes);
+
+  // 2. Case-insensitive em nomes de parametros (A maiusculo)
+  LRes := LToolSomar.Execute('{"A":7,"B":8}');
+  CheckEquals('{"resultado":15}', LRes);
+
+  // 3. String e boolean
+  LRes := LToolFormat.Execute('{"texto":"Delphi","maiusculo":true}');
+  CheckEquals('DELPHI', LRes);
+
+  // 4. Omite parametro opcional (maiusculo default eh False)
+  LRes := LToolFormat.Execute('{"texto":"Delphi"}');
+  CheckEquals('delphi', LRes);
+end;
+
+procedure TTestLLMTools.TestGetNames_ReturnsRegisteredToolNames;
+var
+  LNames: TArray<string>;
+begin
+  CheckEquals(0, Length(FProvider.Tools.GetNames), 'Inicialmente deve estar vazio');
+
+  FProvider.RegisterTool('tool_a', 'Desc A', '{}',
+    function(const AArgs: string): string
+    begin
+      Result := '';
+    end);
+
+  FProvider.RegisterTool('tool_b', 'Desc B', '{}',
+    function(const AArgs: string): string
+    begin
+      Result := '';
+    end);
+
+  LNames := FProvider.Tools.GetNames;
+  CheckEquals(2, Length(LNames), 'Deve retornar array com 2 nomes');
+  CheckTrue((LNames[0] = 'tool_a') or (LNames[1] = 'tool_a'), 'Deve conter tool_a');
+  CheckTrue((LNames[0] = 'tool_b') or (LNames[1] = 'tool_b'), 'Deve conter tool_b');
+
+  // Testando property Names
+  CheckEquals(2, Length(FProvider.Tools.Names));
 end;
 
 procedure TTestLLMTools.TestRegisterTool_JSONObjectSchema;
