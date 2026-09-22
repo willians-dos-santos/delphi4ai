@@ -8,6 +8,7 @@ uses
   System.SysUtils,
   System.Variants,
   System.Classes,
+  System.TypInfo,
   Vcl.Graphics,
   Vcl.Controls,
   Vcl.Forms,
@@ -18,9 +19,67 @@ uses
   LLM.Interfaces,
   LLM.HistoryStrategy,
   LLM.Tools,
-  LLM.Exceptions;
+  LLM.Exceptions,
+  LLM.Schema;
 
 type
+  /// <summary>
+  /// Enum para demonstrar suporte a tipos enumerados no schema JSON
+  /// </summary>
+  TClimaCondicao = (ccEnsolarado, ccNublado, ccChuvoso, ccTempestade, ccNevando);
+
+  /// <summary>
+  /// Record DTO para teste de Saida Estruturada (Stack allocated / Zero memory leak)
+  /// </summary>
+  [TLLMSchema('PrevisaoTempo', 'Previsao meteorologica estruturada')]
+  TPrevisaoTempoRecord = record
+    [TLLMProperty('Nome da cidade')]
+    Cidade: string;
+
+    [TLLMProperty('Temperatura estimada em graus Celsius')]
+    Temperatura: Double;
+
+    [TLLMProperty('Umidade relativa do ar em porcentagem (0 a 100)')]
+    Umidade: Integer;
+
+    [TLLMProperty('Indica se esta chovendo')]
+    Chovendo: Boolean;
+
+    [TLLMProperty('Condicao do clima')]
+    Condicao: TClimaCondicao;
+
+    [TLLMProperty('Recomendacao ou alerta para o usuario')]
+    Recomendacao: string;
+  end;
+
+  /// <summary>
+  /// Classe DTO para teste de Saida Estruturada baseada em Classes
+  /// </summary>
+  [TLLMSchema('PerfilProfissional', 'Perfil profissional estruturado')]
+  TPerfilUsuarioClass = class
+  private
+    FNome: string;
+    FIdade: Integer;
+    FProfissao: string;
+    FCompetencias: string;
+    FAtivo: Boolean;
+  published
+    [TLLMProperty('Nome completo da pessoa')]
+    property Nome: string read FNome write FNome;
+
+    [TLLMProperty('Idade em anos')]
+    property Idade: Integer read FIdade write FIdade;
+
+    [TLLMProperty('Profissao ou especialidade')]
+    property Profissao: string read FProfissao write FProfissao;
+
+    [TLLMProperty('Principais habilidades ou competencias tecnicas')]
+    property Competencias: string read FCompetencias write FCompetencias;
+
+    [TLLMProperty('Se o cadastro esta ativo')]
+    property Ativo: Boolean read FAtivo write FAtivo;
+  end;
+
   TForm1 = class(TForm)
     pnlConfig: TPanel;
     grpConfig: TGroupBox;
@@ -43,6 +102,8 @@ type
     edtInput: TEdit;
     btnEnviar: TButton;
     btnLimpar: TButton;
+    btnTestRecord: TButton;
+    btnTestClass: TButton;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure btnEnviarClick(Sender: TObject);
@@ -51,11 +112,15 @@ type
     procedure btnLimparClick(Sender: TObject);
     procedure btnAplicarClick(Sender: TObject);
     procedure cbbStrategyChange(Sender: TObject);
+    procedure btnTestRecordClick(Sender: TObject);
+    procedure btnTestClassClick(Sender: TObject);
   private
     FLLM: ILLMProvider;
     procedure InitProvider;
     procedure AppendChat(const ARole, AText: string);
     procedure UpdateStatus(const ACustomMsg: string = '');
+    procedure PrepararRequisicao(const AStatusMsg: string);
+    procedure FinalizarRequisicao;
     procedure EnviarMensagem;
   public
   end;
@@ -89,12 +154,24 @@ begin
 end;
 
 procedure TForm1.InitProvider;
+var
+  LApiKey, LBaseURL, LModel: string;
 begin
-//  FLLM := CreateLLMProvider(Trim(edtApiKey.Text), Trim(edtBaseURL.Text),
-//    Trim(edtModel.Text));
+  LApiKey := Trim(edtApiKey.Text);
+  LBaseURL := Trim(edtBaseURL.Text);
+  LModel := Trim(edtModel.Text);
 
-  FLLM := CreateOllamaProvider(Trim(edtApiKey.Text), Trim(edtBaseURL.Text),
-    Trim(edtModel.Text));
+  if Pos('11434', LBaseURL) > 0 then
+  begin
+    if Pos('/v1', LBaseURL) > 0 then
+    begin
+      LBaseURL := StringReplace(LBaseURL, '/v1/chat/completions', '/api/chat', [rfIgnoreCase]);
+      edtBaseURL.Text := LBaseURL;
+    end;
+    FLLM := CreateOllamaProvider(LModel, LBaseURL, LApiKey);
+  end
+  else
+    FLLM := CreateLLMProvider(LApiKey, LBaseURL, LModel);
 
   FLLM.HistoryStrategy := HISTORY_STRATEGY[cbbStrategy.ItemIndex];
   FLLM.MaxHistoryMessages := 10;
@@ -233,6 +310,27 @@ begin
   EnviarMensagem;
 end;
 
+procedure TForm1.PrepararRequisicao(const AStatusMsg: string);
+begin
+  btnEnviar.Enabled := False;
+  btnLimpar.Enabled := False;
+  btnTestRecord.Enabled := False;
+  btnTestClass.Enabled := False;
+  edtInput.Enabled := False;
+  UpdateStatus(AStatusMsg);
+end;
+
+procedure TForm1.FinalizarRequisicao;
+begin
+  btnEnviar.Enabled := True;
+  btnLimpar.Enabled := True;
+  btnTestRecord.Enabled := True;
+  btnTestClass.Enabled := True;
+  edtInput.Enabled := True;
+  edtInput.SetFocus;
+  UpdateStatus;
+end;
+
 procedure TForm1.EnviarMensagem;
 var
   LUserMsg: string;
@@ -262,9 +360,7 @@ begin
   FLLM.AddUser(LUserMsg);
 
   // 3. Desabilita controles e mostra feedback de carregamento
-  btnEnviar.Enabled := False;
-  edtInput.Enabled := False;
-  UpdateStatus('Aguardando resposta da IA...');
+  PrepararRequisicao('Aguardando resposta da IA...');
 
   // 4. Executa a requisicao assincronamente para nao congelar a interface VCL
   TTask.Run(
@@ -285,18 +381,147 @@ begin
       TThread.Synchronize(nil,
         procedure
         begin
-          btnEnviar.Enabled := True;
-          edtInput.Enabled := True;
-          edtInput.SetFocus;
+          FinalizarRequisicao;
 
           if not LErro.IsEmpty then
             AppendChat('ERRO', LErro)
           else
             AppendChat('Assistente', LResposta);
-
-          UpdateStatus;
         end);
 
+    end);
+end;
+
+procedure TForm1.btnTestRecordClick(Sender: TObject);
+var
+  LPrompt: string;
+begin
+  LPrompt := Trim(edtInput.Text);
+  if LPrompt.IsEmpty then
+    LPrompt := 'Qual a previsao do tempo para a cidade de Gramado/RS hoje? Utilize as ferramentas de clima disponiveis e responda estritamente em formato JSON conforme o schema.';
+
+  AppendChat('Voce [Structured Output - Record]', LPrompt);
+  edtInput.Clear;
+
+  PrepararRequisicao('Solicitando Saida Estruturada (Record)...');
+
+  TTask.Run(
+    procedure
+    var
+      LPrevisao: TPrevisaoTempoRecord;
+      LErro: string;
+      LChovendoStr: string;
+      LCondicaoStr: string;
+    begin
+      LErro := EmptyStr;
+      try
+        FLLM.ApiKey := Trim(edtApiKey.Text);
+        FLLM.BaseURL := Trim(edtBaseURL.Text);
+        FLLM.Model := Trim(edtModel.Text);
+
+        FLLM.AddUser(LPrompt);
+        LPrevisao := TLLM<TPrevisaoTempoRecord>.SendAs(FLLM);
+      except
+        on E: Exception do
+          LErro := E.Message;
+      end;
+
+      TThread.Synchronize(nil,
+        procedure
+        begin
+          FinalizarRequisicao;
+
+          if not LErro.IsEmpty then
+            AppendChat('ERRO', LErro)
+          else
+          begin
+            if LPrevisao.Chovendo then
+              LChovendoStr := 'Sim'
+            else
+              LChovendoStr := 'Nao';
+
+            LCondicaoStr := GetEnumName(TypeInfo(TClimaCondicao), Ord(LPrevisao.Condicao));
+
+            AppendChat('Assistente [Record Tipado]',
+              Format(
+                '=== DTO RECEBIDO COM SUCESSO (Record sem memory leak) ===' + sLineBreak +
+                '  • Cidade: %s' + sLineBreak +
+                '  • Temperatura: %.1f °C' + sLineBreak +
+                '  • Umidade: %d%%' + sLineBreak +
+                '  • Chovendo: %s' + sLineBreak +
+                '  • Condicao: %s' + sLineBreak +
+                '  • Recomendacao: %s',
+                [LPrevisao.Cidade, LPrevisao.Temperatura, LPrevisao.Umidade,
+                 LChovendoStr, LCondicaoStr, LPrevisao.Recomendacao]));
+          end;
+        end);
+    end);
+end;
+
+procedure TForm1.btnTestClassClick(Sender: TObject);
+var
+  LPrompt: string;
+begin
+  LPrompt := Trim(edtInput.Text);
+  if LPrompt.IsEmpty then
+    LPrompt := 'Gere o perfil de um Arquiteto de Software Delphi experiente chamado Marcelo. Responda estritamente em formato JSON conforme o schema.';
+
+  AppendChat('Voce [Structured Output - Classe]', LPrompt);
+  edtInput.Clear;
+
+  PrepararRequisicao('Solicitando Saida Estruturada (Classe)...');
+
+  TTask.Run(
+    procedure
+    var
+      LPerfil: TPerfilUsuarioClass;
+      LErro: string;
+      LAtivoStr: string;
+    begin
+      LErro := EmptyStr;
+      LPerfil := nil;
+      try
+        FLLM.ApiKey := Trim(edtApiKey.Text);
+        FLLM.BaseURL := Trim(edtBaseURL.Text);
+        FLLM.Model := Trim(edtModel.Text);
+
+        FLLM.AddUser(LPrompt);
+        LPerfil := TLLM<TPerfilUsuarioClass>.SendAs(FLLM);
+      except
+        on E: Exception do
+          LErro := E.Message;
+      end;
+
+      TThread.Synchronize(nil,
+        procedure
+        begin
+          try
+            FinalizarRequisicao;
+
+            if not LErro.IsEmpty then
+              AppendChat('ERRO', LErro)
+            else if Assigned(LPerfil) then
+            begin
+              if LPerfil.Ativo then
+                LAtivoStr := 'Sim'
+              else
+                LAtivoStr := 'Nao';
+
+              AppendChat('Assistente [Classe Tipada]',
+                Format(
+                  '=== DTO RECEBIDO COM SUCESSO (Instancia de Classe) ===' + sLineBreak +
+                  '  • Nome: %s' + sLineBreak +
+                  '  • Idade: %d anos' + sLineBreak +
+                  '  • Profissao: %s' + sLineBreak +
+                  '  • Competencias: %s' + sLineBreak +
+                  '  • Ativo: %s',
+                  [LPerfil.Nome, LPerfil.Idade, LPerfil.Profissao,
+                   LPerfil.Competencias, LAtivoStr]));
+            end;
+          finally
+            LPerfil.Free;
+          end;
+        end);
     end);
 end;
 

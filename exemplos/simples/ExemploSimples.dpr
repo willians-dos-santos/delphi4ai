@@ -12,6 +12,7 @@ uses
   uWeatherTool in 'uWeatherTool.pas',
   LLM.Tools.Attributes in '..\..\llm\LLM.Tools.Attributes.pas',
   LLM.Tools.RTTI in '..\..\llm\LLM.Tools.RTTI.pas',
+  LLM.Schema in '..\..\llm\LLM.Schema.pas',
   Ollama.Provider in '..\..\ollama\Ollama.Provider.pas';
 
 {$R *.res}

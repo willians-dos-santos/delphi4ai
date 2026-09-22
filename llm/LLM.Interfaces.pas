@@ -8,6 +8,8 @@ uses
 
 type
 
+  ILLMResponseFormat = interface;
+
   ILLMProvider = interface
     ['{E4627A59-5B8F-4D2A-94B6-1E27B13C4509}']
     // Getters e Setters das propriedades basicas
@@ -115,6 +117,43 @@ type
     // Eventos de execucao de Tools
     property OnBeforeExecuteTool: TOnBeforeExecuteToolEvent read GetOnBeforeExecuteTool write SetOnBeforeExecuteTool;
     property OnAfterExecuteTool: TOnAfterExecuteToolEvent read GetOnAfterExecuteTool write SetOnAfterExecuteTool;
+
+    // Suporte a Saidas Estruturadas (Structured Outputs)
+    function GetResponseFormat: ILLMResponseFormat;
+    function SendAsJSON: TJSONObject;
+    function SendAs(AClass: TClass): TObject; overload;
+    procedure SendAs(ATypeInfo: Pointer; out Buffer); overload;
+
+    property ResponseFormat: ILLMResponseFormat read GetResponseFormat;
+  end;
+
+  /// <summary>
+  /// Tipo de formato de resposta para saídas estruturadas
+  /// </summary>
+  TResponseFormatType = (rfText, rfJSONObject, rfJSONSchema);
+
+  /// <summary>
+  /// Interface para configuracao do formato de resposta estruturada
+  /// </summary>
+  ILLMResponseFormat = interface
+    ['{B4A3D1E2-F5C6-47A8-9B0C-1D2E3F4A5B6C}']
+    function GetFormatType: TResponseFormatType;
+    function GetSchemaName: string;
+    function GetSchema: TJSONObject;
+    function GetStrict: Boolean;
+
+    procedure SetText;
+    procedure SetJSONObject;
+    procedure SetSchema(const AName, ASchemaJSON: string; AStrict: Boolean = True); overload;
+    procedure SetSchema(const AName: string; const ASchema: TJSONObject; AStrict: Boolean = True); overload;
+    procedure SetSchema(AClass: TClass; AStrict: Boolean = True); overload;
+    procedure SetSchema(ATypeInfo: Pointer; AStrict: Boolean = True); overload;
+    procedure Clear;
+
+    property FormatType: TResponseFormatType read GetFormatType;
+    property SchemaName: string read GetSchemaName;
+    property Schema: TJSONObject read GetSchema;
+    property Strict: Boolean read GetStrict;
   end;
 
   /// <summary>

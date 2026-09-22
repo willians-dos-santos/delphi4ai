@@ -11,6 +11,7 @@ uses
   LLM.Tools in '..\llm\LLM.Tools.pas',
   LLM.Tools.Attributes in '..\llm\LLM.Tools.Attributes.pas',
   LLM.Tools.RTTI in '..\llm\LLM.Tools.RTTI.pas',
+  LLM.Schema in '..\llm\LLM.Schema.pas',
   LLM.Interfaces in '..\llm\LLM.Interfaces.pas',
   LLM.Base in '..\llm\LLM.Base.pas',
   LLM.Exceptions in '..\llm\LLM.Exceptions.pas',
@@ -20,7 +21,8 @@ uses
   Test.Utils.JSONArray in 'Test.Utils.JSONArray.pas',
   Test.LLM.Base in 'Test.LLM.Base.pas',
   Test.LLM.Tools in 'Test.LLM.Tools.pas',
-  Test.Ollama.Provider in 'Test.Ollama.Provider.pas';
+  Test.Ollama.Provider in 'Test.Ollama.Provider.pas',
+  Test.LLM.StructuredOutput in 'Test.LLM.StructuredOutput.pas';
 
 {$R *.res}
 

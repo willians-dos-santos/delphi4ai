@@ -7,6 +7,7 @@ uses
   LLM.HistoryStrategy,
   LLM.Tools,
   LLM.Tools.RTTI,
+  LLM.Schema,
   System.SysUtils,
   System.Classes,
   System.JSON,
@@ -92,6 +93,10 @@ type
     FOnBeforeExecuteTool: TOnBeforeExecuteToolEvent;
     FOnAfterExecuteTool: TOnAfterExecuteToolEvent;
 
+    // Configuracoes de Saidas Estruturadas (Structured Output)
+    FResponseFormat: ILLMResponseFormat;
+    function GetResponseFormat: ILLMResponseFormat;
+
     procedure PrepareHeaders(AClient: THTTPClient); virtual;
     procedure AppendAssistantToolCallsToHistory(const ARawJSON: string); virtual;
 
@@ -167,6 +172,21 @@ type
 
     property OnBeforeExecuteTool: TOnBeforeExecuteToolEvent read GetOnBeforeExecuteTool write SetOnBeforeExecuteTool;
     property OnAfterExecuteTool: TOnAfterExecuteToolEvent read GetOnAfterExecuteTool write SetOnAfterExecuteTool;
+
+    // Metodos e propriedades de Saidas Estruturadas (Structured Output)
+    function SendAsJSON: TJSONObject;
+    function SendAs(AClass: TClass): TObject; overload;
+    procedure SendAs(ATypeInfo: Pointer; out Buffer); overload;
+    property ResponseFormat: ILLMResponseFormat read GetResponseFormat;
+  end;
+
+  /// <summary>
+  /// Class helper para permitir chamada fluente de SendAs<T> diretamente na instancia da classe
+  /// </summary>
+  TLLMProviderBaseHelper = class helper for TLLMProviderBase
+  public
+    function SendAs<T>: T;
+    procedure SetResponseSchema<T>(AStrict: Boolean = True);
   end;
 
 implementation
@@ -209,6 +229,8 @@ begin
   FHttpClient := THTTPClient.Create;
   FHttpClient.ConnectionTimeout := FTimeout;
   FHttpClient.ResponseTimeout := FTimeout;
+
+  FResponseFormat := TLLMResponseFormat.Create;
 end;
 
 destructor TLLMProviderBase.Destroy;
@@ -332,15 +354,41 @@ var
   LBody: TJSONObject;
   LOldOwned: Boolean;
   LToolsArray: TJSONArray;
+  LRespFmt, LSchemaObj: TJSONObject;
+  LMsgsToSend: TJSONArray;
+  LSysInstruction: TJSONObject;
+  LHasSchema: Boolean;
 begin
   LBody := TJSONObject.Create;
   LOldOwned := AMsgs.Owned;
   try
     LBody.AddPair('model', AModel);
 
-    // Impede que LBody.Free destrua o array AMsgs compartilhado
-    AMsgs.Owned := False;
-    LBody.AddPair('messages', AMsgs);
+    LHasSchema := Assigned(FResponseFormat) and (FResponseFormat.FormatType = rfJSONSchema) and
+      (FResponseFormat.Schema <> nil);
+
+    if LHasSchema and (Pos('11434', FBaseURL) > 0) then
+    begin
+      LMsgsToSend := AMsgs.Clone as TJSONArray;
+      LSysInstruction := TJSONObject.Create;
+      LSysInstruction.AddPair('role', 'system');
+      if Assigned(FTools) and (FTools.Count > 0) then
+        LSysInstruction.AddPair('content',
+          'IMPORTANTE: Voce pode utilizar as ferramentas disponiveis para obter informacoes se necessario. Ao gerar a resposta final (ou caso ferramentas nao sejam necessarias), responda ESTRITAMENTE em formato JSON valido em conformidade com este schema: ' +
+          FResponseFormat.Schema.ToJSON)
+      else
+        LSysInstruction.AddPair('content',
+          'IMPORTANTE: Responda ESTRITAMENTE em formato JSON valido em conformidade com este schema: ' +
+          FResponseFormat.Schema.ToJSON);
+      LMsgsToSend.AddElement(LSysInstruction);
+      LBody.AddPair('messages', LMsgsToSend);
+    end
+    else
+    begin
+      // Impede que LBody.Free destrua o array AMsgs compartilhado
+      AMsgs.Owned := False;
+      LBody.AddPair('messages', AMsgs);
+    end;
 
     if ATemp >= 0 then
       LBody.AddPair('temperature', TJSONNumber.Create(ATemp));
@@ -348,12 +396,51 @@ begin
     if AMaxTok > 0 then
       LBody.AddPair('max_tokens', TJSONNumber.Create(AMaxTok));
 
-    // Se houver tools registradas, adiciona o array 'tools' e 'tool_choice'
+    // Se houver tools registradas
     if Assigned(FTools) and (FTools.Count > 0) then
     begin
       LToolsArray := FTools.ToJSONArray;
       LBody.AddPair('tools', LToolsArray);
       LBody.AddPair('tool_choice', 'auto');
+    end;
+
+    // Se houver configuracao de Structured Output (response_format)
+    if Assigned(FResponseFormat) then
+    begin
+      case FResponseFormat.FormatType of
+        rfJSONObject:
+        begin
+          LRespFmt := TJSONObject.Create;
+          LRespFmt.AddPair('type', 'json_object');
+          LBody.AddPair('response_format', LRespFmt);
+          if Pos('11434', FBaseURL) > 0 then
+            LBody.AddPair('format', 'json');
+        end;
+        rfJSONSchema:
+        begin
+          if FResponseFormat.Schema <> nil then
+          begin
+            LRespFmt := TJSONObject.Create;
+            LRespFmt.AddPair('type', 'json_schema');
+
+            LSchemaObj := TJSONObject.Create;
+            LSchemaObj.AddPair('name', FResponseFormat.SchemaName);
+            LSchemaObj.AddPair('strict', FResponseFormat.Strict);
+            LSchemaObj.AddPair('schema', FResponseFormat.Schema.Clone as TJSONObject);
+
+            LRespFmt.AddPair('json_schema', LSchemaObj);
+            LBody.AddPair('response_format', LRespFmt);
+
+            if Pos('11434', FBaseURL) > 0 then
+            begin
+              if AModel.ToLower.Contains('cloud') then
+                LBody.AddPair('format', 'json')
+              else
+                LBody.AddPair('format', FResponseFormat.Schema.Clone as TJSONObject);
+            end;
+          end;
+        end;
+      end;
     end;
 
     LBody.AddPair('stream', False);
@@ -984,6 +1071,135 @@ end;
 procedure TLLMProviderBase.RegisterTool(const AInstance: TObject);
 begin
   FRTTIManager.RegisterTool(AInstance);
+end;
+
+function TLLMProviderBase.GetResponseFormat: ILLMResponseFormat;
+begin
+  Result := FResponseFormat;
+end;
+
+function TLLMProviderBase.SendAsJSON: TJSONObject;
+var
+  LRawResp, LCleanStr: string;
+  LVal: TJSONValue;
+  LWasText: Boolean;
+  LStartIdx, LEndIdx, LFirstBrace, LLastBrace: Integer;
+begin
+  LWasText := (FResponseFormat.FormatType = rfText);
+  if LWasText then
+    FResponseFormat.SetJSONObject;
+
+  try
+    LRawResp := Send;
+    LCleanStr := LRawResp.Trim;
+
+    // 1. Tenta extrair bloco ```json ... ``` ou ``` ... ``` em qualquer ponto do texto
+    LStartIdx := Pos('```json', LCleanStr);
+    if LStartIdx > 0 then
+    begin
+      LCleanStr := Copy(LCleanStr, LStartIdx + 7, Length(LCleanStr));
+      LEndIdx := Pos('```', LCleanStr);
+      if LEndIdx > 0 then
+        LCleanStr := Copy(LCleanStr, 1, LEndIdx - 1);
+      LCleanStr := LCleanStr.Trim;
+    end
+    else
+    begin
+      LStartIdx := Pos('```', LCleanStr);
+      if LStartIdx > 0 then
+      begin
+        LCleanStr := Copy(LCleanStr, LStartIdx + 3, Length(LCleanStr));
+        LEndIdx := Pos('```', LCleanStr);
+        if LEndIdx > 0 then
+          LCleanStr := Copy(LCleanStr, 1, LEndIdx - 1);
+        LCleanStr := LCleanStr.Trim;
+      end;
+    end;
+
+    // 2. Se nao comecar com '{', tenta localizar o primeiro '{' e o ultimo '}'
+    if not LCleanStr.StartsWith('{') then
+    begin
+      LFirstBrace := Pos('{', LCleanStr);
+      LLastBrace := LastDelimiter('}', LCleanStr);
+      if (LFirstBrace > 0) and (LLastBrace > LFirstBrace) then
+        LCleanStr := Copy(LCleanStr, LFirstBrace, LLastBrace - LFirstBrace + 1).Trim;
+    end;
+
+    LVal := TJSONObject.ParseJSONValue(LCleanStr);
+    if not (LVal is TJSONObject) then
+    begin
+      if Assigned(LVal) then
+        LVal.Free;
+      raise Exception.CreateFmt('A resposta da IA nao e um objeto JSON valido: %s', [LRawResp]);
+    end;
+
+    Result := TJSONObject(LVal);
+  finally
+    if LWasText then
+      FResponseFormat.Clear;
+  end;
+end;
+
+function TLLMProviderBase.SendAs(AClass: TClass): TObject;
+var
+  LJSON: TJSONObject;
+  LWasConfigured: Boolean;
+begin
+  if AClass = nil then
+    raise Exception.Create('AClass nao pode ser nil para SendAs.');
+
+  LWasConfigured := (FResponseFormat.FormatType <> rfText);
+  if not LWasConfigured then
+    FResponseFormat.SetSchema(AClass);
+
+  try
+    LJSON := SendAsJSON;
+    try
+      Result := TLLMJSONDeserializer.DeserializeClass(LJSON, AClass);
+    finally
+      LJSON.Free;
+    end;
+  finally
+    if not LWasConfigured then
+      FResponseFormat.Clear;
+  end;
+end;
+
+procedure TLLMProviderBase.SendAs(ATypeInfo: Pointer; out Buffer);
+var
+  LJSON: TJSONObject;
+  LWasConfigured: Boolean;
+begin
+  if ATypeInfo = nil then
+    raise Exception.Create('ATypeInfo nao pode ser nil para SendAs.');
+
+  LWasConfigured := (FResponseFormat.FormatType <> rfText);
+  if not LWasConfigured then
+    FResponseFormat.SetSchema(ATypeInfo);
+
+  try
+    LJSON := SendAsJSON;
+    try
+      TLLMJSONDeserializer.DeserializeRecord(LJSON, ATypeInfo, Buffer);
+    finally
+      LJSON.Free;
+    end;
+  finally
+    if not LWasConfigured then
+      FResponseFormat.Clear;
+  end;
+end;
+
+{ TLLMProviderBaseHelper }
+
+function TLLMProviderBaseHelper.SendAs<T>: T;
+begin
+  Result := TLLM<T>.SendAs(Self);
+end;
+
+procedure TLLMProviderBaseHelper.SetResponseSchema<T>(AStrict: Boolean);
+begin
+  TLLM<T>.SetResponseSchema(Self, AStrict);
 end;
 
 end.

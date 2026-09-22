@@ -92,7 +92,7 @@ object Form1: TForm1
         Width = 350
         Height = 23
         TabOrder = 0
-        Text = 'http://localhost:11434/v1/chat/completions'
+        Text = 'http://localhost:11434/api/chat'
       end
       object edtModel: TEdit
         Left = 536
@@ -178,9 +178,9 @@ object Form1: TForm1
   end
   object pnlBottom: TPanel
     Left = 0
-    Top = 535
+    Top = 522
     Width = 780
-    Height = 65
+    Height = 78
     Align = alBottom
     BevelOuter = bvNone
     Padding.Left = 8
@@ -188,12 +188,10 @@ object Form1: TForm1
     Padding.Right = 8
     Padding.Bottom = 8
     TabOrder = 2
-    ExplicitTop = 527
-    ExplicitWidth = 778
     object lblStatus: TLabel
       Left = 8
-      Top = 42
-      Width = 138
+      Top = 46
+      Width = 380
       Height = 15
       Caption = 'Mensagens no hist'#243'rico: 0'
       Font.Charset = DEFAULT_CHARSET
@@ -205,8 +203,8 @@ object Form1: TForm1
     end
     object edtInput: TEdit
       Left = 8
-      Top = 10
-      Width = 660
+      Top = 8
+      Width = 556
       Height = 25
       Font.Charset = DEFAULT_CHARSET
       Font.Color = clWindowText
@@ -215,12 +213,12 @@ object Form1: TForm1
       Font.Style = []
       ParentFont = False
       TabOrder = 0
-      TextHint = 'Digite sua mensagem e pressione Enter ou clique em Enviar...'
+      TextHint = 'Digite uma mensagem ou clique nos bot'#245'es de Sa'#237'da Estruturada...'
       OnKeyDown = edtInputKeyDown
     end
     object btnEnviar: TButton
-      Left = 676
-      Top = 10
+      Left = 572
+      Top = 8
       Width = 96
       Height = 25
       Caption = 'Enviar'
@@ -230,12 +228,30 @@ object Form1: TForm1
     end
     object btnLimpar: TButton
       Left = 676
-      Top = 38
+      Top = 8
       Width = 96
-      Height = 22
+      Height = 25
       Caption = 'Limpar Chat'
       TabOrder = 2
       OnClick = btnLimparClick
+    end
+    object btnTestRecord: TButton
+      Left = 410
+      Top = 40
+      Width = 175
+      Height = 28
+      Caption = #128203' Estruturado (Record)'
+      TabOrder = 3
+      OnClick = btnTestRecordClick
+    end
+    object btnTestClass: TButton
+      Left = 597
+      Top = 40
+      Width = 175
+      Height = 28
+      Caption = #127963' Estruturado (Classe)'
+      TabOrder = 4
+      OnClick = btnTestClassClick
     end
   end
 end

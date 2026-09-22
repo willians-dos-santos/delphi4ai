@@ -72,15 +72,39 @@ var
   LBody, LOptions: TJSONObject;
   LOldOwned: Boolean;
   LToolsArray: TJSONArray;
+  LMsgsToSend: TJSONArray;
+  LSysInstruction: TJSONObject;
+  LHasSchema: Boolean;
 begin
   LBody := TJSONObject.Create;
   LOldOwned := AMsgs.Owned;
   try
     LBody.AddPair('model', AModel);
 
-    // Impede que LBody.Free destrua o array AMsgs compartilhado
-    AMsgs.Owned := False;
-    LBody.AddPair('messages', AMsgs);
+    LHasSchema := Assigned(FResponseFormat) and (FResponseFormat.FormatType = rfJSONSchema) and
+      (FResponseFormat.Schema <> nil);
+
+    if LHasSchema then
+    begin
+      LMsgsToSend := AMsgs.Clone as TJSONArray;
+      LSysInstruction := TJSONObject.Create;
+      LSysInstruction.AddPair('role', 'system');
+      if Assigned(FTools) and (FTools.Count > 0) then
+        LSysInstruction.AddPair('content',
+          'IMPORTANTE: Voce pode utilizar as ferramentas disponiveis para obter informacoes se necessario. Ao gerar a resposta final (ou caso ferramentas nao sejam necessarias), responda ESTRITAMENTE em formato JSON valido em conformidade com este schema: ' +
+          FResponseFormat.Schema.ToJSON)
+      else
+        LSysInstruction.AddPair('content',
+          'IMPORTANTE: Responda ESTRITAMENTE em formato JSON valido em conformidade com este schema: ' +
+          FResponseFormat.Schema.ToJSON);
+      LMsgsToSend.AddElement(LSysInstruction);
+      LBody.AddPair('messages', LMsgsToSend);
+    end
+    else
+    begin
+      AMsgs.Owned := False;
+      LBody.AddPair('messages', AMsgs);
+    end;
 
     LBody.AddPair('stream', False);
 
@@ -100,6 +124,25 @@ begin
     begin
       LToolsArray := FTools.ToJSONArray;
       LBody.AddPair('tools', LToolsArray);
+    end;
+
+    // Suporte a Saidas Estruturadas (Structured Outputs) no Ollama
+    if Assigned(FResponseFormat) then
+    begin
+      case FResponseFormat.FormatType of
+        rfJSONObject:
+          LBody.AddPair('format', 'json');
+        rfJSONSchema:
+        begin
+          if FResponseFormat.Schema <> nil then
+          begin
+            if AModel.ToLower.Contains('cloud') then
+              LBody.AddPair('format', 'json')
+            else
+              LBody.AddPair('format', FResponseFormat.Schema.Clone as TJSONObject);
+          end;
+        end;
+      end;
     end;
 
     Result := LBody.ToJSON;
