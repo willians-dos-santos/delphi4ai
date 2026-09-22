@@ -1,4 +1,4 @@
-﻿package Delphi4AI;
+package Delphi4AI;
 
 {$R *.res}
 {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
@@ -39,6 +39,7 @@ contains
   LLM.Exceptions in 'llm\LLM.Exceptions.pas',
   LLM.Factory in 'app\LLM.Factory.pas',
   LLM.Tools.Attributes in 'llm\LLM.Tools.Attributes.pas',
-  LLM.Tools.RTTI in 'llm\LLM.Tools.RTTI.pas';
+  LLM.Tools.RTTI in 'llm\LLM.Tools.RTTI.pas',
+  Ollama.Provider in 'ollama\Ollama.Provider.pas';
 
 end.

@@ -11,7 +11,8 @@ uses
   LLM.Factory in '..\..\app\LLM.Factory.pas',
   uWeatherTool in 'uWeatherTool.pas',
   LLM.Tools.Attributes in '..\..\llm\LLM.Tools.Attributes.pas',
-  LLM.Tools.RTTI in '..\..\llm\LLM.Tools.RTTI.pas';
+  LLM.Tools.RTTI in '..\..\llm\LLM.Tools.RTTI.pas',
+  Ollama.Provider in '..\..\ollama\Ollama.Provider.pas';
 
 {$R *.res}
 

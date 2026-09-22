@@ -140,6 +140,8 @@ $(PreBuildEvent)]]></PreBuildEvent>
         <DCCReference Include="..\..\app\LLM.Factory.pas"/>
         <DCCReference Include="uWeatherTool.pas"/>
         <DCCReference Include="..\..\llm\LLM.Tools.Attributes.pas"/>
+        <DCCReference Include="..\..\llm\LLM.Tools.RTTI.pas"/>
+        <DCCReference Include="..\..\ollama\Ollama.Provider.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

@@ -117,6 +117,22 @@ type
     property OnAfterExecuteTool: TOnAfterExecuteToolEvent read GetOnAfterExecuteTool write SetOnAfterExecuteTool;
   end;
 
+  /// <summary>
+  /// Interface especializada para o provedor Ollama
+  /// </summary>
+  IOllamaProvider = interface(ILLMProvider)
+    ['{D1A7E9C4-61B8-4FE2-8924-11D5A720E71A}']
+    /// <summary>
+    /// Consulta o endpoint /api/tags e retorna a lista de nomes dos modelos locais instalados
+    /// </summary>
+    function ListModels: TArray<string>;
+
+    /// <summary>
+    /// Verifica se a instancia local do Ollama esta em execucao e respondendo
+    /// </summary>
+    function IsServerRunning: Boolean;
+  end;
+
 implementation
 
 end.

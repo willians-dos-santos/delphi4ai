@@ -19,34 +19,6 @@ type
   /// </summary>
   TLLMProviderBase = class(TInterfacedObject, ILLMProvider)
   private
-    FApiKey: string;
-    FBaseURL: string;
-    FModel: string;
-    FTemperature: Double;
-    FMaxTokens: Integer;
-    FTimeout: Integer;
-    FAutoAddAssistantResponse: Boolean;
-    FMessages: TJSONArray;
-    FHttpClient: THTTPClient;
-
-    // Configuracoes de Historico
-    FHistoryStrategy: THistoryStrategy;
-    FMaxHistoryMessages: Integer;
-    FKeepRecentMessages: Integer;
-    FSummaryModel: string;
-    FSummaryPrompt: string;
-
-    // Configuracoes e estado de Tools / Function Calling
-    FTools: ILLMToolRegistry;
-    FRTTIManager: TLLMRTTIManager;
-    FAutoExecuteTools: Boolean;
-    FMaxToolIterations: Integer;
-    FPropagateToolExceptions: Boolean;
-    FLastToolCalls: TLLMToolCallList;
-    FHasToolCalls: Boolean;
-    FOnBeforeExecuteTool: TOnBeforeExecuteToolEvent;
-    FOnAfterExecuteTool: TOnAfterExecuteToolEvent;
-
     // Getters e Setters de Propriedades Basicas
     function GetApiKey: string;
     procedure SetApiKey(const Value: string);
@@ -92,6 +64,37 @@ type
     procedure SetOnAfterExecuteTool(const Value: TOnAfterExecuteToolEvent);
 
   protected
+    FApiKey: string;
+    FBaseURL: string;
+    FModel: string;
+    FTemperature: Double;
+    FMaxTokens: Integer;
+    FTimeout: Integer;
+    FAutoAddAssistantResponse: Boolean;
+    FMessages: TJSONArray;
+    FHttpClient: THTTPClient;
+
+    // Configuracoes de Historico
+    FHistoryStrategy: THistoryStrategy;
+    FMaxHistoryMessages: Integer;
+    FKeepRecentMessages: Integer;
+    FSummaryModel: string;
+    FSummaryPrompt: string;
+
+    // Configuracoes e estado de Tools / Function Calling
+    FTools: ILLMToolRegistry;
+    FRTTIManager: TLLMRTTIManager;
+    FAutoExecuteTools: Boolean;
+    FMaxToolIterations: Integer;
+    FPropagateToolExceptions: Boolean;
+    FLastToolCalls: TLLMToolCallList;
+    FHasToolCalls: Boolean;
+    FOnBeforeExecuteTool: TOnBeforeExecuteToolEvent;
+    FOnAfterExecuteTool: TOnAfterExecuteToolEvent;
+
+    procedure PrepareHeaders(AClient: THTTPClient); virtual;
+    procedure AppendAssistantToolCallsToHistory(const ARawJSON: string); virtual;
+
     function BuildBodyJSON(const AModel: string; ATemp: Double;
       AMaxTok: Integer; AMsgs: TJSONArray): string; virtual;
     function ExtractErrorMessage(const AErrorJSON: string): string; virtual;
@@ -377,13 +380,22 @@ begin
       begin
         LErr := TJSONObject(LErrVal);
         Result := LErr.GetValue<string>('message', AErrorJSON);
-      end;
+      end
+      else if LErrVal is TJSONString then
+        Result := LErrVal.Value;
     finally
       LObj.Free;
     end;
   end
   else if Assigned(LVal) then
     LVal.Free;
+end;
+
+procedure TLLMProviderBase.PrepareHeaders(AClient: THTTPClient);
+begin
+  if not FApiKey.Trim.IsEmpty then
+    AClient.CustomHeaders['Authorization'] := 'Bearer ' + FApiKey;
+  AClient.CustomHeaders['Content-Type'] := 'application/json';
 end;
 
 procedure TLLMProviderBase.SetLastToolCalls(const ACalls: TLLMToolCallList);
@@ -413,8 +425,7 @@ begin
 
   FHttpClient.ConnectionTimeout := FTimeout;
   FHttpClient.ResponseTimeout := FTimeout;
-  FHttpClient.CustomHeaders['Authorization'] := 'Bearer ' + FApiKey;
-  FHttpClient.CustomHeaders['Content-Type'] := 'application/json';
+  PrepareHeaders(FHttpClient);
 
   LStream := TStringStream.Create(ABodyJSON, TEncoding.UTF8);
   try
@@ -659,6 +670,36 @@ begin
   end;
 end;
 
+procedure TLLMProviderBase.AppendAssistantToolCallsToHistory(const ARawJSON: string);
+var
+  LVal: TJSONValue;
+  LJSON, LChoice: TJSONObject;
+  LChoices: TJSONArray;
+  LChoicesVal, LMsgVal: TJSONValue;
+begin
+  LVal := TJSONObject.ParseJSONValue(ARawJSON);
+  if LVal is TJSONObject then
+  begin
+    LJSON := TJSONObject(LVal);
+    try
+      LChoicesVal := LJSON.FindValue('choices');
+      if (LChoicesVal is TJSONArray) and (TJSONArray(LChoicesVal).Count > 0) then
+      begin
+        LChoices := TJSONArray(LChoicesVal);
+        if LChoices.Items[0] is TJSONObject then
+        begin
+          LChoice := TJSONObject(LChoices.Items[0]);
+          LMsgVal := LChoice.FindValue('message');
+          if LMsgVal is TJSONObject then
+            FMessages.AddElement(LMsgVal.Clone as TJSONObject);
+        end;
+      end;
+    finally
+      LJSON.Free;
+    end;
+  end;
+end;
+
 function TLLMProviderBase.Send(out RawJSON: string): string;
 var
   LBodyStr: string;
@@ -667,10 +708,6 @@ var
   LToolCall: TLLMToolCall;
   LTool: ILLMTool;
   LToolResult: string;
-  LVal: TJSONValue;
-  LJSON, LChoice: TJSONObject;
-  LChoices: TJSONArray;
-  LChoicesVal, LMsgVal: TJSONValue;
   LSuccess: Boolean;
 begin
   LIteration := 0;
@@ -691,27 +728,7 @@ begin
     end;
 
     // Se houve tool_calls, anexa a mensagem do assistente com os tool_calls ao historico
-    LVal := TJSONObject.ParseJSONValue(RawJSON);
-    if LVal is TJSONObject then
-    begin
-      LJSON := TJSONObject(LVal);
-      try
-        LChoicesVal := LJSON.FindValue('choices');
-        if (LChoicesVal is TJSONArray) and (TJSONArray(LChoicesVal).Count > 0) then
-        begin
-          LChoices := TJSONArray(LChoicesVal);
-          if LChoices.Items[0] is TJSONObject then
-          begin
-            LChoice := TJSONObject(LChoices.Items[0]);
-            LMsgVal := LChoice.FindValue('message');
-            if LMsgVal is TJSONObject then
-              FMessages.AddElement(LMsgVal.Clone as TJSONObject);
-          end;
-        end;
-      finally
-        LJSON.Free;
-      end;
-    end;
+    AppendAssistantToolCallsToHistory(RawJSON);
 
     // Se a execucao automatica estiver desativada (Modo Manual), encerra aqui para o usuario responder
     if not FAutoExecuteTools then

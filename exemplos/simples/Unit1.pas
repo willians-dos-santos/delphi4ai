@@ -90,7 +90,10 @@ end;
 
 procedure TForm1.InitProvider;
 begin
-  FLLM := CreateLLMProvider(Trim(edtApiKey.Text), Trim(edtBaseURL.Text),
+//  FLLM := CreateLLMProvider(Trim(edtApiKey.Text), Trim(edtBaseURL.Text),
+//    Trim(edtModel.Text));
+
+  FLLM := CreateOllamaProvider(Trim(edtApiKey.Text), Trim(edtBaseURL.Text),
     Trim(edtModel.Text));
 
   FLLM.HistoryStrategy := HISTORY_STRATEGY[cbbStrategy.ItemIndex];

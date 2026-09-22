@@ -13,11 +13,14 @@ uses
   LLM.Tools.RTTI in '..\llm\LLM.Tools.RTTI.pas',
   LLM.Interfaces in '..\llm\LLM.Interfaces.pas',
   LLM.Base in '..\llm\LLM.Base.pas',
+  LLM.Exceptions in '..\llm\LLM.Exceptions.pas',
+  LLM.Factory in '..\app\LLM.Factory.pas',
+  Ollama.Provider in '..\ollama\Ollama.Provider.pas',
   LLM.MockProvider in 'Mocks\LLM.MockProvider.pas',
   Test.Utils.JSONArray in 'Test.Utils.JSONArray.pas',
   Test.LLM.Base in 'Test.LLM.Base.pas',
   Test.LLM.Tools in 'Test.LLM.Tools.pas',
-  LLM.Exceptions in '..\llm\LLM.Exceptions.pas';
+  Test.Ollama.Provider in 'Test.Ollama.Provider.pas';
 
 {$R *.res}
 
