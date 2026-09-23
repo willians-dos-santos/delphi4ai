@@ -11,6 +11,7 @@ uses
   LLM.Interfaces,
   LLM.Base,
   LLM.Schema,
+  LLM.Client,
   Ollama.Provider,
   LLM.MockProvider,
   Test.Ollama.Provider;
@@ -86,6 +87,10 @@ type
     procedure TestSendAsJSON_ParsesAndCleansMarkdown;
     procedure TestSendAs_GenericRecord;
     procedure TestSendAs_GenericClass;
+    procedure TestSmartRecord_SendAsRecord;
+    procedure TestSmartRecord_SendAsClass;
+    procedure TestSmartRecord_SendAsWithPrompt;
+    procedure TestTypedSender_Fluent;
   end;
 
 implementation
@@ -388,6 +393,87 @@ begin
   finally
     LUser.Free;
   end;
+end;
+
+procedure TTestLLMStructuredOutput.TestSmartRecord_SendAsRecord;
+var
+  LLM: TLLMClient;
+  LPrevisao: TPrevisaoTempoRecord;
+begin
+  FOpenAIProvider.SetMockResponse(
+    '{"cidade":"Gramado","temperatura":15.5,"umidade":80,"chovendo":true,"condicao":"ccChuvoso"}');
+
+  // Atribuicao implicita de ILLMProvider para TLLMClient (Smart Record)
+  LLM := FOpenAIIntf;
+
+  // Chamada direta na variavel record
+  LPrevisao := LLM.SendAs<TPrevisaoTempoRecord>;
+
+  CheckEquals('Gramado', LPrevisao.Cidade);
+  CheckEquals(15.5, LPrevisao.Temperatura, 0.01);
+  CheckEquals(80, LPrevisao.Umidade);
+  CheckTrue(LPrevisao.Chovendo);
+  CheckTrue(LPrevisao.Condicao = ccChuvoso);
+end;
+
+procedure TTestLLMStructuredOutput.TestSmartRecord_SendAsClass;
+var
+  LLM: TLLMClient;
+  LUser: TUsuarioClass;
+begin
+  FOllamaProvider.SetMockResponse(
+    '{"nome":"Carlos Silva","idade":40,"ativo":true}');
+
+  LLM := FOllamaIntf;
+  LUser := LLM.SendAs<TUsuarioClass>;
+  try
+    CheckNotNull(LUser);
+    CheckEquals('Carlos Silva', LUser.Nome);
+    CheckEquals(40, LUser.Idade);
+    CheckTrue(LUser.Ativo);
+  finally
+    LUser.Free;
+  end;
+end;
+
+procedure TTestLLMStructuredOutput.TestSmartRecord_SendAsWithPrompt;
+var
+  LLM: TLLMClient;
+  LPrevisao: TPrevisaoTempoRecord;
+begin
+  FOpenAIProvider.SetMockResponse(
+    '{"cidade":"Curitiba","temperatura":18.0,"umidade":70,"chovendo":false,"condicao":"ccNublado"}');
+
+  LLM := FOpenAIIntf;
+
+  // Envio passando prompt diretamente no SendAs
+  LPrevisao := LLM.SendAs<TPrevisaoTempoRecord>('Qual o tempo em Curitiba?');
+
+  CheckEquals('Curitiba', LPrevisao.Cidade);
+  CheckEquals(18.0, LPrevisao.Temperatura, 0.01);
+  CheckEquals(70, LPrevisao.Umidade);
+  CheckFalse(LPrevisao.Chovendo);
+end;
+
+procedure TTestLLMStructuredOutput.TestTypedSender_Fluent;
+var
+  LLM: TLLMClient;
+  LSender: ILLMSender<TPrevisaoTempoRecord>;
+  LPrevisao: TPrevisaoTempoRecord;
+  LRawJSON: string;
+begin
+  FOpenAIProvider.SetMockResponse(
+    '{"cidade":"Canela","temperatura":12.0,"umidade":85,"chovendo":true,"condicao":"ccChuvoso"}');
+
+  LLM := FOpenAIIntf;
+
+  // Obter sender tipado reutilizavel a partir do Smart Record
+  LSender := LLM.Sender<TPrevisaoTempoRecord>;
+  CheckNotNull(LSender);
+
+  LPrevisao := LSender.Send('Tempo em Canela?', LRawJSON);
+  CheckEquals('Canela', LPrevisao.Cidade);
+  CheckTrue(LRawJSON.Contains('Canela'));
 end;
 
 initialization

@@ -10,6 +10,17 @@ type
 
   ILLMResponseFormat = interface;
 
+  /// <summary>
+  /// Interface especializada para envio fluente e retorno tipado estruturado (Record ou Class)
+  /// </summary>
+  ILLMSender<T> = interface
+    function AddUser(const AContent: string): ILLMSender<T>;
+    function AddSystem(const AContent: string): ILLMSender<T>;
+    function Send: T; overload;
+    function Send(const APrompt: string): T; overload;
+    function Send(const APrompt: string; out RawJSON: string): T; overload;
+  end;
+
   ILLMProvider = interface
     ['{E4627A59-5B8F-4D2A-94B6-1E27B13C4509}']
     // Getters e Setters das propriedades basicas
@@ -123,6 +134,8 @@ type
     function SendAsJSON: TJSONObject;
     function SendAs(AClass: TClass): TObject; overload;
     procedure SendAs(ATypeInfo: Pointer; out Buffer); overload;
+
+
 
     property ResponseFormat: ILLMResponseFormat read GetResponseFormat;
   end;

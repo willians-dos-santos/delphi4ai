@@ -177,7 +177,9 @@ type
     function SendAsJSON: TJSONObject;
     function SendAs(AClass: TClass): TObject; overload;
     procedure SendAs(ATypeInfo: Pointer; out Buffer); overload;
+
     property ResponseFormat: ILLMResponseFormat read GetResponseFormat;
+
   end;
 
   /// <summary>
@@ -1201,5 +1203,7 @@ procedure TLLMProviderBaseHelper.SetResponseSchema<T>(AStrict: Boolean);
 begin
   TLLM<T>.SetResponseSchema(Self, AStrict);
 end;
+
+
 
 end.

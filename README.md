@@ -230,7 +230,9 @@ Delphi4AI/
 │   └── LLM.Factory.pas            # Factory para criacao de provedores
 ├── llm/
 │   ├── LLM.Base.pas               # Implementacao base do provedor OpenAI
-│   ├── LLM.Interfaces.pas         # Interfaces fundamentais (ILLMProvider, ILLMTool, etc.)
+│   ├── LLM.Interfaces.pas         # Interfaces fundamentais (ILLMProvider, ILLMTool, ILLMSender, etc.)
+│   ├── LLM.Client.pas             # Smart Record (TLLMClient) e executor tipado ILLMSender<T>
+│   ├── LLM.Schema.pas             # Atributos, gerador de schema e desserializador tipado
 │   ├── LLM.HistoryStrategy.pas    # Enums e definicoes de estrategia de contexto
 │   ├── LLM.Exceptions.pas         # Hierarquia de excecoes customizadas
 │   ├── LLM.Tools.pas              # Registro e despacho de tools manuais

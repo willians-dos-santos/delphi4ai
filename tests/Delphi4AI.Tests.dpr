@@ -12,6 +12,7 @@ uses
   LLM.Tools.Attributes in '..\llm\LLM.Tools.Attributes.pas',
   LLM.Tools.RTTI in '..\llm\LLM.Tools.RTTI.pas',
   LLM.Schema in '..\llm\LLM.Schema.pas',
+  LLM.Client in '..\llm\LLM.Client.pas',
   LLM.Interfaces in '..\llm\LLM.Interfaces.pas',
   LLM.Base in '..\llm\LLM.Base.pas',
   LLM.Exceptions in '..\llm\LLM.Exceptions.pas',

@@ -13,6 +13,7 @@ uses
   LLM.Tools.Attributes in '..\..\llm\LLM.Tools.Attributes.pas',
   LLM.Tools.RTTI in '..\..\llm\LLM.Tools.RTTI.pas',
   LLM.Schema in '..\..\llm\LLM.Schema.pas',
+  LLM.Client in '..\..\llm\LLM.Client.pas',
   Ollama.Provider in '..\..\ollama\Ollama.Provider.pas';
 
 {$R *.res}

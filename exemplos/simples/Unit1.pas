@@ -20,7 +20,8 @@ uses
   LLM.HistoryStrategy,
   LLM.Tools,
   LLM.Exceptions,
-  LLM.Schema;
+  LLM.Schema,
+  LLM.Client;
 
 type
   /// <summary>
@@ -115,7 +116,7 @@ type
     procedure btnTestRecordClick(Sender: TObject);
     procedure btnTestClassClick(Sender: TObject);
   private
-    FLLM: ILLMProvider;
+    FLLM: TLLMClient;
     procedure InitProvider;
     procedure AppendChat(const ARole, AText: string);
     procedure UpdateStatus(const ACustomMsg: string = '');
@@ -259,7 +260,7 @@ procedure TForm1.UpdateStatus(const ACustomMsg: string);
 begin
   if not ACustomMsg.IsEmpty then
     lblStatus.Caption := ACustomMsg
-  else if Assigned(FLLM) then
+  else if FLLM.IsAssigned then
     lblStatus.Caption :=
       Format('Mensagens ativas no historico: %d (Estrategia: %s, Tools: %d)',
       [FLLM.Messages.Count, cbbStrategy.Text, FLLM.Tools.Count])
@@ -269,7 +270,7 @@ end;
 
 procedure TForm1.cbbStrategyChange(Sender: TObject);
 begin
-  if not Assigned(FLLM) then
+  if not FLLM.IsAssigned then
     Exit;
 
   FLLM.HistoryStrategy := HISTORY_STRATEGY[cbbStrategy.ItemIndex];
@@ -283,7 +284,7 @@ end;
 
 procedure TForm1.btnLimparClick(Sender: TObject);
 begin
-  if Assigned(FLLM) then
+  if FLLM.IsAssigned then
   begin
     FLLM.ClearHistory;
     if not Trim(edtSystemPrompt.Text).IsEmpty then
@@ -420,7 +421,7 @@ begin
         FLLM.Model := Trim(edtModel.Text);
 
         FLLM.AddUser(LPrompt);
-        LPrevisao := TLLM<TPrevisaoTempoRecord>.SendAs(FLLM);
+        LPrevisao := FLLM.SendAs<TPrevisaoTempoRecord>;
       except
         on E: Exception do
           LErro := E.Message;
@@ -486,7 +487,7 @@ begin
         FLLM.Model := Trim(edtModel.Text);
 
         FLLM.AddUser(LPrompt);
-        LPerfil := TLLM<TPerfilUsuarioClass>.SendAs(FLLM);
+        LPerfil := FLLM.SendAs<TPerfilUsuarioClass>;
       except
         on E: Exception do
           LErro := E.Message;
