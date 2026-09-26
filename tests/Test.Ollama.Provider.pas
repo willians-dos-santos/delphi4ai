@@ -472,7 +472,8 @@ procedure TTestOllamaProvider.TestFactory_CreateOllamaProvider;
 var
   LProvider: IOllamaProvider;
 begin
-  LProvider := CreateOllamaProvider('qwen2.5', 'http://127.0.0.1:11434/api/chat');
+
+  LProvider := CreateLLMProvider(ptOllama, 'ollama', 'qwen2.5', 'http://127.0.0.1:11434/api/chat') as IOllamaProvider;
   CheckNotNull(LProvider, 'Provedor Ollama nao pode ser nulo');
   CheckEquals('qwen2.5', LProvider.Model, 'Modelo deve ser qwen2.5');
   CheckEquals('http://127.0.0.1:11434/api/chat', LProvider.BaseURL, 'BaseURL incorreta');

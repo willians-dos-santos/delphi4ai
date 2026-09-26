@@ -1,4 +1,4 @@
-unit Unit1;
+﻿unit Unit1;
 
 interface
 
@@ -27,14 +27,14 @@ type
   /// <summary>
   /// Enum para demonstrar suporte a tipos enumerados no schema JSON
   /// </summary>
-  TClimaCondicao = (ccEnsolarado, ccNublado, ccChuvoso, ccTempestade, ccNevando);
+  TClimaCondicao = (ccEnsolarado, ccNublado, ccChuvoso, ccTempestade,
+    ccNevando);
 
   /// <summary>
   /// Record DTO para teste de Saida Estruturada (Stack allocated / Zero memory leak)
   /// </summary>
   [TLLMSchema('PrevisaoTempo', 'Previsao meteorologica estruturada')]
-  TPrevisaoTempoRecord = record
-    [TLLMProperty('Nome da cidade')]
+  TPrevisaoTempoRecord = record [TLLMProperty('Nome da cidade')]
     Cidade: string;
 
     [TLLMProperty('Temperatura estimada em graus Celsius')]
@@ -105,6 +105,8 @@ type
     btnLimpar: TButton;
     btnTestRecord: TButton;
     btnTestClass: TButton;
+    Label1: TLabel;
+    cbProvider: TComboBox;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure btnEnviarClick(Sender: TObject);
@@ -137,7 +139,6 @@ uses
   uWeatherTool;
 
 {$R *.dfm}
-
 { TForm1 }
 
 const
@@ -146,6 +147,9 @@ const
 
 procedure TForm1.FormCreate(Sender: TObject);
 begin
+
+  cbProvider.Items.Text := EmptyStr.Join(sLineBreak, TLLMProviderType.Names);
+  cbProvider.ItemIndex := ptOpenAI.Index;
   InitProvider;
 end;
 
@@ -166,13 +170,16 @@ begin
   begin
     if Pos('/v1', LBaseURL) > 0 then
     begin
-      LBaseURL := StringReplace(LBaseURL, '/v1/chat/completions', '/api/chat', [rfIgnoreCase]);
+      LBaseURL := StringReplace(LBaseURL, '/v1/chat/completions', '/api/chat',
+        [rfIgnoreCase]);
       edtBaseURL.Text := LBaseURL;
     end;
-    FLLM := CreateOllamaProvider(LModel, LBaseURL, LApiKey);
-  end
-  else
-    FLLM := CreateLLMProvider(LApiKey, LBaseURL, LModel);
+
+  end;
+
+
+  FLLM := CreateLLMProvider(TLLMProviderType.FromStr(cbProvider.Text), LApiKey,
+    LModel, LBaseURL);
 
   FLLM.HistoryStrategy := HISTORY_STRATEGY[cbbStrategy.ItemIndex];
   FLLM.MaxHistoryMessages := 10;
@@ -182,14 +189,16 @@ begin
     FLLM.AddSystem(Trim(edtSystemPrompt.Text));
 
   // Registra funcoes de exemplo (Tools / Function Calling)
-  FLLM.RegisterFunction('obter_hora_atual', 'Retorna a data e hora atual do sistema local',
+  FLLM.RegisterFunction('obter_hora_atual',
+    'Retorna a data e hora atual do sistema local',
     '{"type":"object","properties":{}}',
     function(const AArgs: string): string
     begin
       Result := Format('{"data_hora": "%s"}', [DateTimeToStr(Now)]);
     end);
 
-  FLLM.RegisterFunction('consultar_cotacao_moeda', 'Retorna a cotacao estimada de uma moeda em Reais (BRL)',
+  FLLM.RegisterFunction('consultar_cotacao_moeda',
+    'Retorna a cotacao estimada de uma moeda em Reais (BRL)',
     '{"type":"object","properties":{"moeda":{"type":"string","description":"Sigla da moeda, ex: USD, EUR, BTC"}},"required":["moeda"]}',
     function(const AArgs: string): string
     var
@@ -210,7 +219,8 @@ begin
         else
           LCotacao := 5.45;
 
-        Result := Format('{"moeda":"%s","cotacao_brl":%.2f}', [LMoeda, LCotacao]);
+        Result := Format('{"moeda":"%s","cotacao_brl":%.2f}',
+          [LMoeda, LCotacao]);
       finally
         LArgs.Free;
       end;
@@ -219,30 +229,32 @@ begin
   FLLM.RegisterTool(TWeatherAPI);
 
   // Notificacoes visuais de execucao de tools
-  FLLM.OnBeforeExecuteTool :=
-    procedure(const ACall: TLLMToolCall)
+  FLLM.OnBeforeExecuteTool := procedure(const ACall: TLLMToolCall)
     begin
       TThread.Synchronize(nil,
         procedure
         begin
           AppendChat('Ferramenta (Chamada)',
-            Format('Funcao "%s" invocada pelo modelo com argumentos: %s', [ACall.Name, ACall.Arguments]));
+            Format('Funcao "%s" invocada pelo modelo com argumentos: %s',
+            [ACall.Name, ACall.Arguments]));
         end);
     end;
 
   FLLM.OnAfterExecuteTool :=
-    procedure(const ACall: TLLMToolCall; const AResult: string; const ASuccess: Boolean)
+      procedure(const ACall: TLLMToolCall; const AResult: string;
+    const ASuccess: Boolean)
     begin
       TThread.Synchronize(nil,
         procedure
         begin
-          AppendChat('Ferramenta (Retorno)',
-            Format('Retorno de "%s": %s', [ACall.Name, AResult]));
+          AppendChat('Ferramenta (Retorno)', Format('Retorno de "%s": %s',
+            [ACall.Name, AResult]));
         end);
     end;
 
   memChat.Clear;
-  AppendChat('Sistema', Format('Conversa iniciada com o modelo "%s". Tools registradas: [%s].',
+  AppendChat('Sistema',
+    Format('Conversa iniciada com o modelo "%s". Tools registradas: [%s].',
     [FLLM.Model, string.Join(', ', FLLM.Tools.GetNames)]));
   UpdateStatus;
 end;
@@ -297,7 +309,7 @@ begin
 end;
 
 procedure TForm1.edtInputKeyDown(Sender: TObject; var Key: Word;
-  Shift: TShiftState);
+Shift: TShiftState);
 begin
   if (Key = VK_RETURN) and (Shift = []) then
   begin
@@ -399,7 +411,8 @@ var
 begin
   LPrompt := Trim(edtInput.Text);
   if LPrompt.IsEmpty then
-    LPrompt := 'Qual a previsao do tempo para a cidade de Gramado/RS hoje? Utilize as ferramentas de clima disponiveis e responda estritamente em formato JSON conforme o schema.';
+    LPrompt :=
+      'Qual a previsao do tempo para a cidade de Gramado/RS hoje? Utilize as ferramentas de clima disponiveis e responda estritamente em formato JSON conforme o schema.';
 
   AppendChat('Voce [Structured Output - Record]', LPrompt);
   edtInput.Clear;
@@ -441,19 +454,17 @@ begin
             else
               LChovendoStr := 'Nao';
 
-            LCondicaoStr := GetEnumName(TypeInfo(TClimaCondicao), Ord(LPrevisao.Condicao));
+            LCondicaoStr := GetEnumName(TypeInfo(TClimaCondicao),
+              Ord(LPrevisao.Condicao));
 
             AppendChat('Assistente [Record Tipado]',
-              Format(
-                '=== DTO RECEBIDO COM SUCESSO (Record sem memory leak) ===' + sLineBreak +
-                '  • Cidade: %s' + sLineBreak +
-                '  • Temperatura: %.1f °C' + sLineBreak +
-                '  • Umidade: %d%%' + sLineBreak +
-                '  • Chovendo: %s' + sLineBreak +
-                '  • Condicao: %s' + sLineBreak +
-                '  • Recomendacao: %s',
-                [LPrevisao.Cidade, LPrevisao.Temperatura, LPrevisao.Umidade,
-                 LChovendoStr, LCondicaoStr, LPrevisao.Recomendacao]));
+              Format('=== DTO RECEBIDO COM SUCESSO (Record sem memory leak) ==='
+              + sLineBreak + '  • Cidade: %s' + sLineBreak +
+              '  • Temperatura: %.1f °C' + sLineBreak + '  • Umidade: %d%%' +
+              sLineBreak + '  • Chovendo: %s' + sLineBreak + '  • Condicao: %s'
+              + sLineBreak + '  • Recomendacao: %s', [LPrevisao.Cidade,
+              LPrevisao.Temperatura, LPrevisao.Umidade, LChovendoStr,
+              LCondicaoStr, LPrevisao.Recomendacao]));
           end;
         end);
     end);
@@ -465,7 +476,8 @@ var
 begin
   LPrompt := Trim(edtInput.Text);
   if LPrompt.IsEmpty then
-    LPrompt := 'Gere o perfil de um Arquiteto de Software Delphi experiente chamado Marcelo. Responda estritamente em formato JSON conforme o schema.';
+    LPrompt :=
+      'Gere o perfil de um Arquiteto de Software Delphi experiente chamado Marcelo. Responda estritamente em formato JSON conforme o schema.';
 
   AppendChat('Voce [Structured Output - Classe]', LPrompt);
   edtInput.Clear;
@@ -509,15 +521,12 @@ begin
                 LAtivoStr := 'Nao';
 
               AppendChat('Assistente [Classe Tipada]',
-                Format(
-                  '=== DTO RECEBIDO COM SUCESSO (Instancia de Classe) ===' + sLineBreak +
-                  '  • Nome: %s' + sLineBreak +
-                  '  • Idade: %d anos' + sLineBreak +
-                  '  • Profissao: %s' + sLineBreak +
-                  '  • Competencias: %s' + sLineBreak +
-                  '  • Ativo: %s',
-                  [LPerfil.Nome, LPerfil.Idade, LPerfil.Profissao,
-                   LPerfil.Competencias, LAtivoStr]));
+                Format('=== DTO RECEBIDO COM SUCESSO (Instancia de Classe) ==='
+                + sLineBreak + '  • Nome: %s' + sLineBreak +
+                '  • Idade: %d anos' + sLineBreak + '  • Profissao: %s' +
+                sLineBreak + '  • Competencias: %s' + sLineBreak +
+                '  • Ativo: %s', [LPerfil.Nome, LPerfil.Idade,
+                LPerfil.Profissao, LPerfil.Competencias, LAtivoStr]));
             end;
           finally
             LPerfil.Free;

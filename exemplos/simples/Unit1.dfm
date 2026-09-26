@@ -18,7 +18,7 @@ object Form1: TForm1
     Left = 0
     Top = 0
     Width = 780
-    Height = 150
+    Height = 177
     Align = alTop
     BevelOuter = bvNone
     Padding.Left = 8
@@ -31,49 +31,49 @@ object Form1: TForm1
       Left = 8
       Top = 8
       Width = 764
-      Height = 134
+      Height = 161
       Align = alClient
       Caption = ' Configura'#231#245'es do Provedor de IA '
       TabOrder = 0
       ExplicitWidth = 762
       object lblBaseURL: TLabel
         Left = 16
-        Top = 24
+        Top = 56
         Width = 51
         Height = 15
         Caption = 'Base URL:'
       end
       object lblModel: TLabel
         Left = 472
-        Top = 24
+        Top = 56
         Width = 44
         Height = 15
         Caption = 'Modelo:'
       end
       object lblApiKey: TLabel
         Left = 16
-        Top = 52
+        Top = 84
         Width = 43
         Height = 15
         Caption = 'API Key:'
       end
       object lblStrategy: TLabel
         Left = 472
-        Top = 52
+        Top = 84
         Width = 54
         Height = 15
         Caption = 'Estrat'#233'gia:'
       end
       object lblSystemPrompt: TLabel
         Left = 16
-        Top = 80
+        Top = 112
         Width = 84
         Height = 15
         Caption = 'System Prompt:'
       end
       object lblInfo: TLabel
         Left = 256
-        Top = 108
+        Top = 140
         Width = 457
         Height = 13
         Caption = 
@@ -86,9 +86,16 @@ object Form1: TForm1
         Font.Style = []
         ParentFont = False
       end
+      object Label1: TLabel
+        Left = 16
+        Top = 24
+        Width = 51
+        Height = 15
+        Caption = 'Provedor:'
+      end
       object edtBaseURL: TEdit
         Left = 104
-        Top = 21
+        Top = 53
         Width = 350
         Height = 23
         TabOrder = 0
@@ -96,7 +103,7 @@ object Form1: TForm1
       end
       object edtModel: TEdit
         Left = 536
-        Top = 21
+        Top = 53
         Width = 210
         Height = 23
         TabOrder = 1
@@ -104,7 +111,7 @@ object Form1: TForm1
       end
       object edtApiKey: TEdit
         Left = 104
-        Top = 49
+        Top = 81
         Width = 350
         Height = 23
         PasswordChar = '*'
@@ -113,7 +120,7 @@ object Form1: TForm1
       end
       object cbbStrategy: TComboBox
         Left = 536
-        Top = 49
+        Top = 81
         Width = 210
         Height = 23
         Style = csDropDownList
@@ -128,7 +135,7 @@ object Form1: TForm1
       end
       object edtSystemPrompt: TEdit
         Left = 104
-        Top = 77
+        Top = 109
         Width = 642
         Height = 23
         TabOrder = 4
@@ -136,32 +143,40 @@ object Form1: TForm1
       end
       object btnAplicar: TButton
         Left = 104
-        Top = 104
+        Top = 136
         Width = 140
         Height = 24
         Caption = 'Reiniciar Conversa'
         TabOrder = 5
         OnClick = btnAplicarClick
       end
+      object cbProvider: TComboBox
+        Left = 104
+        Top = 24
+        Width = 145
+        Height = 23
+        Style = csDropDownList
+        TabOrder = 6
+      end
     end
   end
   object pnlClient: TPanel
     Left = 0
-    Top = 150
+    Top = 177
     Width = 780
-    Height = 385
+    Height = 345
     Align = alClient
     BevelOuter = bvNone
     Padding.Left = 8
     Padding.Right = 8
     TabOrder = 1
     ExplicitWidth = 778
-    ExplicitHeight = 377
+    ExplicitHeight = 337
     object memChat: TMemo
       Left = 8
       Top = 0
       Width = 764
-      Height = 385
+      Height = 345
       Align = alClient
       Font.Charset = DEFAULT_CHARSET
       Font.Color = clWindowText
@@ -173,7 +188,7 @@ object Form1: TForm1
       ScrollBars = ssVertical
       TabOrder = 0
       ExplicitWidth = 762
-      ExplicitHeight = 377
+      ExplicitHeight = 337
     end
   end
   object pnlBottom: TPanel
@@ -188,10 +203,12 @@ object Form1: TForm1
     Padding.Right = 8
     Padding.Bottom = 8
     TabOrder = 2
+    ExplicitTop = 514
+    ExplicitWidth = 778
     object lblStatus: TLabel
       Left = 8
       Top = 46
-      Width = 380
+      Width = 138
       Height = 15
       Caption = 'Mensagens no hist'#243'rico: 0'
       Font.Charset = DEFAULT_CHARSET
@@ -240,7 +257,7 @@ object Form1: TForm1
       Top = 40
       Width = 175
       Height = 28
-      Caption = #128203' Estruturado (Record)'
+      Caption = #62667' Estruturado (Record)'
       TabOrder = 3
       OnClick = btnTestRecordClick
     end
@@ -249,7 +266,7 @@ object Form1: TForm1
       Top = 40
       Width = 175
       Height = 28
-      Caption = #127963' Estruturado (Classe)'
+      Caption = #62427' Estruturado (Classe)'
       TabOrder = 4
       OnClick = btnTestClassClick
     end
