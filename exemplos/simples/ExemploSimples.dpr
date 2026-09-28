@@ -14,7 +14,8 @@ uses
   LLM.Tools.RTTI in '..\..\llm\LLM.Tools.RTTI.pas',
   LLM.Schema in '..\..\llm\LLM.Schema.pas',
   LLM.Client in '..\..\llm\LLM.Client.pas',
-  Ollama.Provider in '..\..\ollama\Ollama.Provider.pas';
+  Ollama.Provider in '..\..\ollama\Ollama.Provider.pas',
+  Groq.Provider in '..\..\groq\Groq.Provider.pas';
 
 {$R *.res}
 

@@ -44,8 +44,14 @@ var
   LLM: ILLMProvider;
   Resposta: string;
 begin
-  // Inicializacao rapida (ApiKey, BaseURL, Model)
-  LLM := CreateLLMProvider('sua-api-key', 'https://api.openai.com/v1/chat/completions', 'gpt-4o-mini');
+  // Provedor Groq (ultra-rapido via LPU, padrao llama-3.3-70b-versatile)
+  LLM := CreateLLMProvider(ptGroq, 'sua-groq-api-key');
+
+  // Ou OpenAI padrao
+  // LLM := CreateLLMProvider(ptOpenAI, 'sua-openai-api-key', 'gpt-4o-mini');
+
+  // Ou Ollama local (localhost:11434)
+  // LLM := CreateLLMProvider(ptOllama, 'llama3.2');
 
   // Envia mensagem do usuario
   LLM.AddUser('Explique o que e RTTI no Delphi em poucas palavras.');
@@ -240,6 +246,10 @@ Delphi4AI/
 │   └── LLM.Tools.RTTI.pas         # Mecanismo de reflexao e execucao via RTTI
 ├── utils/
 │   └── Utils.JSONArray.pas        # Utilitarios e helpers para manipulação de arrays JSON
+├── ollama/
+│   └── Ollama.Provider.pas        # Provedor nativo para Ollama local (/api/chat)
+├── groq/
+│   └── Groq.Provider.pas          # Provedor nativo para Groq LPU (API ultra-rapida)
 ├── exemplos/
 │   └── simples/                   # Aplicacao demonstrativa VCL completa
 ├── tests/                         # Suite de testes unitarios com DUnit

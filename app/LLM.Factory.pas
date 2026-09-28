@@ -9,7 +9,7 @@ type
   /// <summary>
   /// Tipos de provedores suportados pelo Delphi4AI
   /// </summary>
-  TLLMProviderType = (ptOpenAI, ptOllama, ptNone);
+  TLLMProviderType = (ptOpenAI, ptOllama, ptGroq, ptNone);
 
   TLLMProviderTypeHelper = record helper for TLLMProviderType
   public
@@ -38,7 +38,8 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   LLM.Base,
-  Ollama.Provider;
+  Ollama.Provider,
+  Groq.Provider;
 
 type
   TCreatorLLMProvider = function(const AApiKey, AModel, ABaseURL: string): ILLMProvider;
@@ -47,6 +48,7 @@ const
   PROVIDERS_NAMES: array [TLLMProviderType] of string = (
     'OpenAI',
     'Ollama',
+    'Groq',
     ''
   );
 
@@ -95,10 +97,26 @@ begin
   Result := TOllamaProvider.Create(LModel, LBaseURL, LKey);
 end;
 
+function CreateGroqProvider(const AApiKey, AModel, ABaseURL: string): ILLMProvider;
+var
+  LBaseURL, LModel: string;
+begin
+  LBaseURL := ABaseURL;
+  if LBaseURL.Trim.IsEmpty then
+    LBaseURL := GROQ_DEFAULT_URL;
+
+  LModel := AModel;
+  if LModel.Trim.IsEmpty then
+    LModel := GROQ_DEFAULT_MODEL;
+
+  Result := TGroqProvider.Create(AApiKey, LModel, LBaseURL);
+end;
+
 const
   CREATORS: array [TLLMProviderType] of TCreatorLLMProvider = (
     CreateOpenAIProvider,
     CreateOllamaProvider,
+    CreateGroqProvider,
     CreateNoneProvider
   );
 

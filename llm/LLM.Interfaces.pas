@@ -185,6 +185,34 @@ type
     function IsServerRunning: Boolean;
   end;
 
+  /// <summary>
+  /// Interface especializada para o provedor Groq
+  /// </summary>
+  IGroqProvider = interface(ILLMProvider)
+    ['{85F84431-4CED-40D7-97D0-309705700CB9}']
+    /// <summary>
+    /// Consulta o endpoint /openai/v1/models e retorna a lista com os IDs dos modelos disponiveis no Groq
+    /// </summary>
+    function ListModels: TArray<string>;
+
+    /// <summary>
+    /// Metodos de leitura dos cabecalhos de Rate Limits retornados pelo Groq
+    /// </summary>
+    function GetRateLimitLimitRequests: Integer;
+    function GetRateLimitRemainingRequests: Integer;
+    function GetRateLimitResetRequests: string;
+    function GetRateLimitLimitTokens: Integer;
+    function GetRateLimitRemainingTokens: Integer;
+    function GetRateLimitResetTokens: string;
+
+    property RateLimitLimitRequests: Integer read GetRateLimitLimitRequests;
+    property RateLimitRemainingRequests: Integer read GetRateLimitRemainingRequests;
+    property RateLimitResetRequests: string read GetRateLimitResetRequests;
+    property RateLimitLimitTokens: Integer read GetRateLimitLimitTokens;
+    property RateLimitRemainingTokens: Integer read GetRateLimitRemainingTokens;
+    property RateLimitResetTokens: string read GetRateLimitResetTokens;
+  end;
+
 implementation
 
 end.

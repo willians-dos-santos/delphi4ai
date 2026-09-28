@@ -117,6 +117,7 @@ type
     procedure cbbStrategyChange(Sender: TObject);
     procedure btnTestRecordClick(Sender: TObject);
     procedure btnTestClassClick(Sender: TObject);
+    procedure cbProviderChange(Sender: TObject);
   private
     FLLM: TLLMClient;
     procedure InitProvider;
@@ -150,12 +151,37 @@ begin
 
   cbProvider.Items.Text := EmptyStr.Join(sLineBreak, TLLMProviderType.Names);
   cbProvider.ItemIndex := ptOpenAI.Index;
-  InitProvider;
+  cbProviderChange(nil);
 end;
 
 procedure TForm1.FormDestroy(Sender: TObject);
 begin
   // FLLM.Free;
+end;
+ 
+procedure TForm1.cbProviderChange(Sender: TObject);
+begin
+  case TLLMProviderType.FromStr(cbProvider.Text) of
+    ptOpenAI:
+    begin
+      edtBaseURL.Text := 'https://api.openai.com/v1/chat/completions';
+      edtModel.Text := 'gpt-4o-mini';
+      edtApiKey.TextHint := 'Cole sua API Key aqui (sk-...)';
+    end;
+    ptOllama:
+    begin
+      edtBaseURL.Text := 'http://localhost:11434/api/chat';
+      edtModel.Text := 'llama3.2';
+      edtApiKey.TextHint := 'Opcional para Ollama local';
+    end;
+    ptGroq:
+    begin
+      edtBaseURL.Text := 'https://api.groq.com/openai/v1/chat/completions';
+      edtModel.Text := 'llama-3.3-70b-versatile';
+      edtApiKey.TextHint := 'Cole sua Groq API Key aqui (gsk_...)';
+    end;
+  end;
+  InitProvider;
 end;
 
 procedure TForm1.InitProvider;

@@ -23,7 +23,9 @@ uses
   Test.LLM.Base in 'Test.LLM.Base.pas',
   Test.LLM.Tools in 'Test.LLM.Tools.pas',
   Test.Ollama.Provider in 'Test.Ollama.Provider.pas',
-  Test.LLM.StructuredOutput in 'Test.LLM.StructuredOutput.pas';
+  Test.LLM.StructuredOutput in 'Test.LLM.StructuredOutput.pas',
+  Groq.Provider in '..\groq\Groq.Provider.pas',
+  Test.Groq.Provider in 'Test.Groq.Provider.pas';
 
 {$R *.res}
 

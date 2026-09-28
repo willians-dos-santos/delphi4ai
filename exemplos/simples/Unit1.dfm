@@ -157,6 +157,7 @@ object Form1: TForm1
         Height = 23
         Style = csDropDownList
         TabOrder = 6
+        OnChange = cbProviderChange
       end
     end
   end

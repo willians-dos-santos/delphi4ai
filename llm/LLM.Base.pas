@@ -105,6 +105,7 @@ type
     function ExtractErrorMessage(const AErrorJSON: string): string; virtual;
     function ExecuteRequest(const ABodyJSON: string;
       out ARawJSON: string): string; virtual;
+    procedure DoAfterReceiveResponse(const AResponse: IHTTPResponse); virtual;
 
     procedure ApplySlidingWindow; virtual;
     procedure ProcessHistory; virtual;
@@ -493,6 +494,11 @@ begin
   FHasToolCalls := Length(FLastToolCalls) > 0;
 end;
 
+procedure TLLMProviderBase.DoAfterReceiveResponse(const AResponse: IHTTPResponse);
+begin
+  // Hook virtual para subclasses processarem headers e status da resposta HTTP
+end;
+
 function TLLMProviderBase.ExecuteRequest(const ABodyJSON: string;
   out ARawJSON: string): string;
 var
@@ -522,6 +528,8 @@ begin
   finally
     LStream.Free;
   end;
+ 
+  DoAfterReceiveResponse(LResp);
 
   LSResp := LResp.ContentAsString(TEncoding.UTF8);
   ARawJSON := LSResp;
