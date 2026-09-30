@@ -137,7 +137,7 @@ type
     procedure RegisterTool(const AInstance: TObject); overload;
     procedure UnregisterTool(const AName: string);
     procedure ClearTools;
-    procedure AddToolResult(const AToolCallId, AContent: string);
+    procedure AddToolResult(const AToolCallId, AContent: string); virtual;
 
     procedure SummarizeHistory;
 

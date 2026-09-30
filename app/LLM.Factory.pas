@@ -9,7 +9,7 @@ type
   /// <summary>
   /// Tipos de provedores suportados pelo Delphi4AI
   /// </summary>
-  TLLMProviderType = (ptOpenAI, ptOllama, ptGroq, ptNone);
+  TLLMProviderType = (ptOpenAI, ptOllama, ptGroq, ptGemini, ptNone);
 
   TLLMProviderTypeHelper = record helper for TLLMProviderType
   public
@@ -39,7 +39,8 @@ uses
   System.Generics.Collections,
   LLM.Base,
   Ollama.Provider,
-  Groq.Provider;
+  Groq.Provider,
+  Gemini.Provider;
 
 type
   TCreatorLLMProvider = function(const AApiKey, AModel, ABaseURL: string): ILLMProvider;
@@ -49,6 +50,7 @@ const
     'OpenAI',
     'Ollama',
     'Groq',
+    'Gemini',
     ''
   );
 
@@ -112,11 +114,27 @@ begin
   Result := TGroqProvider.Create(AApiKey, LModel, LBaseURL);
 end;
 
+function CreateGeminiProvider(const AApiKey, AModel, ABaseURL: string): ILLMProvider;
+var
+  LBaseURL, LModel: string;
+begin
+  LBaseURL := ABaseURL;
+  if LBaseURL.Trim.IsEmpty then
+    LBaseURL := GEMINI_DEFAULT_URL;
+
+  LModel := AModel;
+  if LModel.Trim.IsEmpty then
+    LModel := GEMINI_DEFAULT_MODEL;
+
+  Result := TGeminiProvider.Create(AApiKey, LModel, LBaseURL);
+end;
+
 const
   CREATORS: array [TLLMProviderType] of TCreatorLLMProvider = (
     CreateOpenAIProvider,
     CreateOllamaProvider,
     CreateGroqProvider,
+    CreateGeminiProvider,
     CreateNoneProvider
   );
 

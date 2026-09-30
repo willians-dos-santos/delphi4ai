@@ -77,13 +77,25 @@
         <DCCReference Include="..\utils\Utils.JSONArray.pas"/>
         <DCCReference Include="..\llm\LLM.HistoryStrategy.pas"/>
         <DCCReference Include="..\llm\LLM.Tools.pas"/>
+        <DCCReference Include="..\llm\LLM.Tools.Attributes.pas"/>
+        <DCCReference Include="..\llm\LLM.Tools.RTTI.pas"/>
+        <DCCReference Include="..\llm\LLM.Schema.pas"/>
+        <DCCReference Include="..\llm\LLM.Client.pas"/>
         <DCCReference Include="..\llm\LLM.Interfaces.pas"/>
         <DCCReference Include="..\llm\LLM.Base.pas"/>
+        <DCCReference Include="..\llm\LLM.Exceptions.pas"/>
+        <DCCReference Include="..\app\LLM.Factory.pas"/>
+        <DCCReference Include="..\ollama\Ollama.Provider.pas"/>
         <DCCReference Include="Mocks\LLM.MockProvider.pas"/>
         <DCCReference Include="Test.Utils.JSONArray.pas"/>
         <DCCReference Include="Test.LLM.Base.pas"/>
         <DCCReference Include="Test.LLM.Tools.pas"/>
-        <DCCReference Include="..\llm\LLM.Exceptions.pas"/>
+        <DCCReference Include="Test.Ollama.Provider.pas"/>
+        <DCCReference Include="Test.LLM.StructuredOutput.pas"/>
+        <DCCReference Include="..\groq\Groq.Provider.pas"/>
+        <DCCReference Include="Test.Groq.Provider.pas"/>
+        <DCCReference Include="..\gemini\Gemini.Provider.pas"/>
+        <DCCReference Include="Test.Gemini.Provider.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

@@ -25,7 +25,9 @@ uses
   Test.Ollama.Provider in 'Test.Ollama.Provider.pas',
   Test.LLM.StructuredOutput in 'Test.LLM.StructuredOutput.pas',
   Groq.Provider in '..\groq\Groq.Provider.pas',
-  Test.Groq.Provider in 'Test.Groq.Provider.pas';
+  Test.Groq.Provider in 'Test.Groq.Provider.pas',
+  Gemini.Provider in '..\gemini\Gemini.Provider.pas',
+  Test.Gemini.Provider in 'Test.Gemini.Provider.pas';
 
 {$R *.res}
 

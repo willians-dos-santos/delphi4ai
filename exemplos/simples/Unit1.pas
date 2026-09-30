@@ -1,4 +1,4 @@
-﻿unit Unit1;
+unit Unit1;
 
 interface
 
@@ -137,6 +137,7 @@ implementation
 uses
   System.Threading,
   LLM.Factory,
+  Gemini.Provider,
   uWeatherTool;
 
 {$R *.dfm}
@@ -180,6 +181,12 @@ begin
       edtModel.Text := 'llama-3.3-70b-versatile';
       edtApiKey.TextHint := 'Cole sua Groq API Key aqui (gsk_...)';
     end;
+    ptGemini:
+    begin
+      edtBaseURL.Text := GEMINI_DEFAULT_URL;
+      edtModel.Text := GEMINI_DEFAULT_MODEL;
+      edtApiKey.TextHint := 'Cole sua Gemini API Key aqui (AIzaSy...)';
+    end;
   end;
   InitProvider;
 end;
@@ -200,7 +207,22 @@ begin
         [rfIgnoreCase]);
       edtBaseURL.Text := LBaseURL;
     end;
+  end;
 
+  if TLLMProviderType.FromStr(cbProvider.Text) = ptGemini then
+  begin
+    if LBaseURL.Contains('/chat/completions') or LBaseURL.Contains('api.openai.com') or
+       LBaseURL.Contains('api.groq.com') or LBaseURL.Contains('11434') or LBaseURL.IsEmpty then
+    begin
+      LBaseURL := GEMINI_DEFAULT_URL;
+      edtBaseURL.Text := LBaseURL;
+    end;
+    if LModel.IsEmpty or SameText(LModel, 'gpt-4o-mini') or SameText(LModel, 'llama3.2') or
+       SameText(LModel, 'llama-3.3-70b-versatile') then
+    begin
+      LModel := GEMINI_DEFAULT_MODEL;
+      edtModel.Text := LModel;
+    end;
   end;
 
 

@@ -1,6 +1,6 @@
 # Delphi4AI 🤖⚡
 
-Biblioteca nativa em **Delphi** para integração moderna, rápida e desacoplada com Modelos de Linguagem Grande (**LLMs**) compatíveis com a API da OpenAI (OpenAI, OpenRouter, Groq, DeepSeek, Ollama, LM Studio, vLLM e outros).
+Biblioteca nativa em **Delphi** para integração moderna, rápida e desacoplada com Modelos de Linguagem Grande (**LLMs**) compatíveis com a API da OpenAI (OpenAI, OpenRouter, Groq, DeepSeek, Ollama, LM Studio, vLLM e outros) e provedores nativos dedicados para **Google Gemini** e **Ollama**.
 
 Projetada com foco em **baixo acoplamento**, **zero dependências externas** (utiliza apenas a RTL padrão do Delphi) e suporte de primeira classe a **Function Calling / Tool Calling (incluindo RTTI declarativa)** e **gerenciamento inteligente de histórico**.
 
@@ -9,7 +9,7 @@ Projetada com foco em **baixo acoplamento**, **zero dependências externas** (ut
 ## 🚀 Destaques
 
 - **Zero Dependências Externas**: Utiliza apenas `System.Net.HttpClient`, `System.JSON` e `System.Rtti` nativos do Delphi.
-- **Ampla Compatibilidade**: Funciona com qualquer endpoint compatível com a API Chat Completions da OpenAI (`https://api.openai.com/v1`, Ollama local `http://localhost:11434/v1`, OpenRouter, Groq, etc.).
+- **Ampla Compatibilidade**: Funciona com qualquer endpoint compatível com a API Chat Completions da OpenAI (`https://api.openai.com/v1`, Ollama local `http://localhost:11434/v1`, OpenRouter, Groq, etc.) e suporte nativo ao **Google Gemini** (`generateContent`).
 - **Tools & Function Calling Avançado**:
   - **RTTI Declarativa**: Transforme métodos de qualquer classe em ferramentas para a IA decorando com `[TLLMTool]` e `[TLLMParam]`.
   - **Funções Anônimas**: Registre ferramentas dinamicamente com closures Pascal (`TToolCallback` ou `TToolJSONCallback`).
@@ -44,8 +44,11 @@ var
   LLM: ILLMProvider;
   Resposta: string;
 begin
-  // Provedor Groq (ultra-rapido via LPU, padrao llama-3.3-70b-versatile)
-  LLM := CreateLLMProvider(ptGroq, 'sua-groq-api-key');
+  // Provedor Google Gemini (padrao gemini-2.5-flash via API REST nativa)
+  LLM := CreateLLMProvider(ptGemini, 'sua-gemini-api-key');
+
+  // Ou Groq (ultra-rapido via LPU, padrao llama-3.3-70b-versatile)
+  // LLM := CreateLLMProvider(ptGroq, 'sua-groq-api-key');
 
   // Ou OpenAI padrao
   // LLM := CreateLLMProvider(ptOpenAI, 'sua-openai-api-key', 'gpt-4o-mini');
@@ -250,6 +253,8 @@ Delphi4AI/
 │   └── Ollama.Provider.pas        # Provedor nativo para Ollama local (/api/chat)
 ├── groq/
 │   └── Groq.Provider.pas          # Provedor nativo para Groq LPU (API ultra-rapida)
+├── gemini/
+│   └── Gemini.Provider.pas        # Provedor nativo para Google Gemini (generateContent)
 ├── exemplos/
 │   └── simples/                   # Aplicacao demonstrativa VCL completa
 ├── tests/                         # Suite de testes unitarios com DUnit

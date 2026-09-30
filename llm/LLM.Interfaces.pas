@@ -213,6 +213,34 @@ type
     property RateLimitResetTokens: string read GetRateLimitResetTokens;
   end;
 
+  /// <summary>
+  /// Interface especializada para o provedor Google Gemini
+  /// </summary>
+  IGeminiProvider = interface(ILLMProvider)
+    ['{C58F7225-1C90-48E6-92F2-870E8A681E29}']
+    /// <summary>
+    /// Consulta o endpoint /v1beta/models e retorna a lista com os nomes dos modelos disponiveis no Gemini
+    /// </summary>
+    function ListModels: TArray<string>;
+
+    /// <summary>
+    /// Contagem de tokens consumidos no prompt da ultima requisicao
+    /// </summary>
+    function GetPromptTokenCount: Integer;
+    /// <summary>
+    /// Contagem de tokens gerados na resposta da ultima requisicao
+    /// </summary>
+    function GetCandidatesTokenCount: Integer;
+    /// <summary>
+    /// Total de tokens consumidos na ultima requisicao
+    /// </summary>
+    function GetTotalTokenCount: Integer;
+
+    property PromptTokenCount: Integer read GetPromptTokenCount;
+    property CandidatesTokenCount: Integer read GetCandidatesTokenCount;
+    property TotalTokenCount: Integer read GetTotalTokenCount;
+  end;
+
 implementation
 
 end.
