@@ -16,7 +16,9 @@ uses
   LLM.Client in '..\..\llm\LLM.Client.pas',
   Ollama.Provider in '..\..\ollama\Ollama.Provider.pas',
   Groq.Provider in '..\..\groq\Groq.Provider.pas',
-  Gemini.Provider in '..\..\gemini\Gemini.Provider.pas';
+  Gemini.Provider in '..\..\gemini\Gemini.Provider.pas',
+  Gemini.Image.Provider in '..\..\gemini\Gemini.Image.Provider.pas',
+  Pollinations.Image.Provider in '..\..\pollinations\Pollinations.Image.Provider.pas';
 
 {$R *.res}
 

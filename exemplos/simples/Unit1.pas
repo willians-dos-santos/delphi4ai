@@ -124,6 +124,7 @@ type
     procedure AppendChat(const ARole, AText: string);
     procedure UpdateStatus(const ACustomMsg: string = '');
     procedure PrepararRequisicao(const AStatusMsg: string);
+
     procedure FinalizarRequisicao;
     procedure EnviarMensagem;
   public
@@ -143,15 +144,44 @@ uses
 {$R *.dfm}
 { TForm1 }
 
+type
+  TDefProvData = record
+    baseUrl: string;
+    model: string;
+    hint: String;
+  end;
+
 const
   HISTORY_STRATEGY: array [0 .. 2] of THistoryStrategy = (hsSlidingWindow,
     hsSummarize, hsNone);
+  PROV_DEFAULTS: array [ptOpenAI .. ptGemini] of TDefProvData = ( //
+    ( //
+    baseUrl: 'https://api.openai.com/v1/chat/completions'; model: 'gpt-4o-mini';
+    hint: 'Cole sua API Key aqui (sk-...)'), //
+    ( //
+    baseUrl: 'http://localhost:11434/api/chat'; model: 'llama3.2';
+    hint: 'Opcional para Ollama local'), //
+    ( //
+    baseUrl: 'https://api.groq.com/openai/v1/chat/completions';
+    model: 'llama-3.3-70b-versatile';
+    hint: 'Cole sua Groq API Key aqui (gsk_...)'), //
+    ( //
+    baseUrl: GEMINI_DEFAULT_URL; model: GEMINI_DEFAULT_MODEL;
+    hint: 'Cole sua Gemini API Key aqui (AIzaSy...)') //
+    );
+
+function ProviderSelected: TLLMProviderType;
+begin
+  Result := TLLMProviderType.FromStr(Form1.cbProvider.Text);
+end;
 
 procedure TForm1.FormCreate(Sender: TObject);
 begin
+  cbProvider.Items.Clear;
+  for var LType := ptOpenAI to ptGemini do
+    cbProvider.Items.Add(LType.ToString);
 
-  cbProvider.Items.Text := EmptyStr.Join(sLineBreak, TLLMProviderType.Names);
-  cbProvider.ItemIndex := ptOpenAI.Index;
+  cbProvider.ItemIndex := cbProvider.Items.IndexOf(ptOpenAI.ToString);
   cbProviderChange(nil);
 end;
 
@@ -159,36 +189,19 @@ procedure TForm1.FormDestroy(Sender: TObject);
 begin
   // FLLM.Free;
 end;
- 
+
 procedure TForm1.cbProviderChange(Sender: TObject);
+var
+  LProviderType: TLLMProviderType;
 begin
-  case TLLMProviderType.FromStr(cbProvider.Text) of
-    ptOpenAI:
-    begin
-      edtBaseURL.Text := 'https://api.openai.com/v1/chat/completions';
-      edtModel.Text := 'gpt-4o-mini';
-      edtApiKey.TextHint := 'Cole sua API Key aqui (sk-...)';
-    end;
-    ptOllama:
-    begin
-      edtBaseURL.Text := 'http://localhost:11434/api/chat';
-      edtModel.Text := 'llama3.2';
-      edtApiKey.TextHint := 'Opcional para Ollama local';
-    end;
-    ptGroq:
-    begin
-      edtBaseURL.Text := 'https://api.groq.com/openai/v1/chat/completions';
-      edtModel.Text := 'llama-3.3-70b-versatile';
-      edtApiKey.TextHint := 'Cole sua Groq API Key aqui (gsk_...)';
-    end;
-    ptGemini:
-    begin
-      edtBaseURL.Text := GEMINI_DEFAULT_URL;
-      edtModel.Text := GEMINI_DEFAULT_MODEL;
-      edtApiKey.TextHint := 'Cole sua Gemini API Key aqui (AIzaSy...)';
-    end;
+  LProviderType := ProviderSelected;
+  if (LProviderType >= Low(PROV_DEFAULTS)) and (LProviderType <= High(PROV_DEFAULTS)) then
+  begin
+    edtBaseURL.Text := PROV_DEFAULTS[LProviderType].baseUrl;
+    edtModel.Text := PROV_DEFAULTS[LProviderType].model;
+    edtApiKey.TextHint := PROV_DEFAULTS[LProviderType].hint;
+    InitProvider;
   end;
-  InitProvider;
 end;
 
 procedure TForm1.InitProvider;
@@ -199,35 +212,7 @@ begin
   LBaseURL := Trim(edtBaseURL.Text);
   LModel := Trim(edtModel.Text);
 
-  if Pos('11434', LBaseURL) > 0 then
-  begin
-    if Pos('/v1', LBaseURL) > 0 then
-    begin
-      LBaseURL := StringReplace(LBaseURL, '/v1/chat/completions', '/api/chat',
-        [rfIgnoreCase]);
-      edtBaseURL.Text := LBaseURL;
-    end;
-  end;
-
-  if TLLMProviderType.FromStr(cbProvider.Text) = ptGemini then
-  begin
-    if LBaseURL.Contains('/chat/completions') or LBaseURL.Contains('api.openai.com') or
-       LBaseURL.Contains('api.groq.com') or LBaseURL.Contains('11434') or LBaseURL.IsEmpty then
-    begin
-      LBaseURL := GEMINI_DEFAULT_URL;
-      edtBaseURL.Text := LBaseURL;
-    end;
-    if LModel.IsEmpty or SameText(LModel, 'gpt-4o-mini') or SameText(LModel, 'llama3.2') or
-       SameText(LModel, 'llama-3.3-70b-versatile') then
-    begin
-      LModel := GEMINI_DEFAULT_MODEL;
-      edtModel.Text := LModel;
-    end;
-  end;
-
-
-  FLLM := CreateLLMProvider(TLLMProviderType.FromStr(cbProvider.Text), LApiKey,
-    LModel, LBaseURL);
+  FLLM := CreateLLMProvider(ProviderSelected, LApiKey, LModel, LBaseURL);
 
   FLLM.HistoryStrategy := HISTORY_STRATEGY[cbbStrategy.ItemIndex];
   FLLM.MaxHistoryMessages := 10;
@@ -303,7 +288,7 @@ begin
   memChat.Clear;
   AppendChat('Sistema',
     Format('Conversa iniciada com o modelo "%s". Tools registradas: [%s].',
-    [FLLM.Model, string.Join(', ', FLLM.Tools.GetNames)]));
+    [FLLM.model, string.Join(', ', FLLM.Tools.GetNames)]));
   UpdateStatus;
 end;
 
@@ -401,12 +386,12 @@ begin
     Exit;
 
   // Atualiza credenciais do provedor caso o usuario tenha alterado nos campos
-  FLLM.ApiKey := Trim(edtApiKey.Text);
-  FLLM.BaseURL := Trim(edtBaseURL.Text);
-  FLLM.Model := Trim(edtModel.Text);
+  FLLM.apiKey := Trim(edtApiKey.Text);
+  FLLM.baseUrl := Trim(edtBaseURL.Text);
+  FLLM.model := Trim(edtModel.Text);
 
-  if FLLM.ApiKey.IsEmpty and (Pos('localhost', FLLM.BaseURL) = 0) and
-    (Pos('127.0.0.1', FLLM.BaseURL) = 0) then
+  if FLLM.apiKey.IsEmpty and (Pos('localhost', FLLM.baseUrl) = 0) and
+    (Pos('127.0.0.1', FLLM.baseUrl) = 0) then
   begin
     ShowMessage('Por favor, informe sua API Key antes de enviar uma mensagem.');
     edtApiKey.SetFocus;
@@ -477,9 +462,9 @@ begin
     begin
       LErro := EmptyStr;
       try
-        FLLM.ApiKey := Trim(edtApiKey.Text);
-        FLLM.BaseURL := Trim(edtBaseURL.Text);
-        FLLM.Model := Trim(edtModel.Text);
+        FLLM.apiKey := Trim(edtApiKey.Text);
+        FLLM.baseUrl := Trim(edtBaseURL.Text);
+        FLLM.model := Trim(edtModel.Text);
 
         FLLM.AddUser(LPrompt);
         LPrevisao := FLLM.SendAs<TPrevisaoTempoRecord>;
@@ -542,9 +527,9 @@ begin
       LErro := EmptyStr;
       LPerfil := nil;
       try
-        FLLM.ApiKey := Trim(edtApiKey.Text);
-        FLLM.BaseURL := Trim(edtBaseURL.Text);
-        FLLM.Model := Trim(edtModel.Text);
+        FLLM.apiKey := Trim(edtApiKey.Text);
+        FLLM.baseUrl := Trim(edtBaseURL.Text);
+        FLLM.model := Trim(edtModel.Text);
 
         FLLM.AddUser(LPrompt);
         LPerfil := FLLM.SendAs<TPerfilUsuarioClass>;

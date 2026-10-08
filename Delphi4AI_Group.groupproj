@@ -1,4 +1,4 @@
-﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{C6E0FA41-7A39-44F2-BE78-438B0B7D1030}</ProjectGuid>
     </PropertyGroup>
@@ -10,6 +10,9 @@
             <Dependencies/>
         </Projects>
         <Projects Include="exemplos\simples\ExemploSimples.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="exemplos\imagem\ExemploImagem.dproj">
             <Dependencies/>
         </Projects>
     </ItemGroup>
@@ -47,14 +50,23 @@
     <Target Name="ExemploSimples:Make">
         <MSBuild Projects="exemplos\simples\ExemploSimples.dproj" Targets="Make"/>
     </Target>
+    <Target Name="ExemploImagem">
+        <MSBuild Projects="exemplos\imagem\ExemploImagem.dproj"/>
+    </Target>
+    <Target Name="ExemploImagem:Clean">
+        <MSBuild Projects="exemplos\imagem\ExemploImagem.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="ExemploImagem:Make">
+        <MSBuild Projects="exemplos\imagem\ExemploImagem.dproj" Targets="Make"/>
+    </Target>
     <Target Name="Build">
-        <CallTarget Targets="Delphi4AI;Delphi4AI_Tests;ExemploSimples"/>
+        <CallTarget Targets="Delphi4AI;Delphi4AI_Tests;ExemploSimples;ExemploImagem"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="Delphi4AI:Clean;Delphi4AI_Tests:Clean;ExemploSimples:Clean"/>
+        <CallTarget Targets="Delphi4AI:Clean;Delphi4AI_Tests:Clean;ExemploSimples:Clean;ExemploImagem:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="Delphi4AI:Make;Delphi4AI_Tests:Make;ExemploSimples:Make"/>
+        <CallTarget Targets="Delphi4AI:Make;Delphi4AI_Tests:Make;ExemploSimples:Make;ExemploImagem:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>

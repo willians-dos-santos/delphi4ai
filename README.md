@@ -17,8 +17,11 @@ Projetada com foco em **baixo acoplamento**, **zero dependências externas** (ut
 - **Gerenciamento de Histórico de Conversa**:
   - **Sliding Window (`hsSlidingWindow`)**: Janela deslizante com proteção atômica de blocos de tools (nunca deixa chamadas de ferramentas ou resultados órfãos).
   - **Summarization (`hsSummarize`)**: Compactação e resumo automático do histórico antigo usando a própria IA.
-- **Design Baseado em Interfaces**: Totalmente testável e desacoplado através de `ILLMProvider` e `ILLMToolRegistry`.
-- **Suíte de Testes com DUnit**: Testes automatizados cobrindo requisições, parsing de chamadas de ferramentas, poda de histórico e RTTI.
+- **Geração de Imagens (Pollinations.ai & Google Gemini Nano Banana)**:
+  - **Pollinations.ai (`ptPollinations`)**: **100% Grátis**, sem necessidade de chave de API, alta velocidade com modelos **FLUX.1**, turbo, fotorrealismo e anime. Perfeito para testes imediatos e produção sem custo.
+  - **Google Gemini (`ptGemini`)**: Suporte nativo à API Interactions (`gemini-nano-banana-2.1`, `gemini-3.1-flash-image`, `gemini-3-pro-image`), com controle de resoluções (1K/2K/4K), proporções de aspecto, Grounding com Google Search e exportação direta em RTL (Bytes/Stream/File).
+- **Design Baseado em Interfaces**: Totalmente testável e desacoplado através de `ILLMProvider`, `ILLMToolRegistry` e `ILLMImageProvider`.
+- **Suíte de Testes com DUnit**: Testes automatizados cobrindo requisições, parsing de chamadas de ferramentas, poda de histórico, RTTI e geração de imagens.
 
 ---
 
@@ -203,16 +206,107 @@ LLM.MaxHistoryMessages := 10; // Mantem no maximo 10 mensagens
 
 ---
 
-## 🖥️ Exemplo Prático (VCL)
+## 🎨 Geração de Imagens
 
-Na pasta [`exemplos/simples/`](file:///g:/Meu%20Drive/workspace/delphi/Delphi4AI/exemplos/simples/) você encontra uma aplicação VCL pronta para teste:
+O Delphi4AI oferece suporte de primeira classe à geração de imagens via **Pollinations.ai** (100% gratuito e sem necessidade de chave de API) e **Google Gemini Nano Banana** (via endpoint moderno `/v1beta/interactions`), sempre com zero dependências externas:
 
-- Chat visual completo.
+### 🌟 Exemplo 1: Pollinations.ai (100% Grátis / Sem API Key)
+
+Ideal para desenvolvimento, testes imediatos e prototipagem com os modelos **FLUX.1**, Turbo, Realism e Anime:
+
+```delphi
+uses
+  LLM.Image.Interfaces,
+  LLM.Factory;
+
+var
+  ImageGen: ILLMImageProvider;
+  Response: ILLMImageResponse;
+begin
+  // Sem chave de API! Modelo padrao 'flux'
+  ImageGen := CreateLLMImageProvider(ptPollinations);
+
+  Response := ImageGen.Generate('A photo of a cute red panda wearing a tiny bamboo hat');
+  Response.First.SaveToFile('panda.jpg');
+end;
+```
+
+Com opções de proporção (16:9, 9:16, 1:1, etc.) e tamanho:
+
+```delphi
+var
+  Response: ILLMImageResponse;
+begin
+  Response := ImageGen.Generate(
+    TLLMImageRequest.New('Cinematic cyberpunk cityscape at night with neon lights')
+      .SetAspectRatio(ar16_9)
+      .SetImageSize(is1K)
+  );
+
+  Response.First.SaveToFile('cidade.jpg');
+end;
+```
+
+---
+
+### 🍌 Exemplo 2: Google Gemini (Nano Banana / Interactions API)
+
+Para quem possui conta com faturamento ativo no Google Cloud / Google AI Studio:
+
+```delphi
+var
+  ImageGen: ILLMImageProvider;
+  Response: ILLMImageResponse;
+begin
+  ImageGen := CreateLLMImageProvider(ptGemini, 'sua-gemini-api-key');
+
+  Response := ImageGen.Generate(
+    TLLMImageRequest.New('Infográfico do clima dos próximos 5 dias em São Paulo com tabela estilizada')
+      .SetAspectRatio(ar16_9)
+      .SetImageSize(is2K)
+      .SetFormat(imPNG)
+      .SetThinkingLevel(tlHigh)
+      .EnableGoogleSearch(True)
+  );
+
+  Response.First.SaveToFile('clima.png');
+end;
+```
+
+#### Edição de Imagem / Referência Visual (Image-to-Image com Gemini):
+
+```delphi
+var
+  Req: TLLMImageRequest;
+  Response: ILLMImageResponse;
+begin
+  Req := TLLMImageRequest.New('Adicione um chapéu de mago e óculos escuros neste gato')
+    .AddReferenceFile('gato.png')
+    .SetAspectRatio(ar1_1);
+
+  Response := ImageGen.Generate(Req);
+  Response.First.SaveToFile('gato_editado.png');
+end;
+```
+
+---
+
+## 🖥️ Exemplos Práticos (VCL)
+
+O repositório inclui duas aplicações VCL completas prontas para execução:
+
+### 1. Chat e Tool Calling (`exemplos/simples/`)
+- Chat visual multi-turn completo.
 - Configuração dinâmica de URL, Modelo, API Key e Estratégia de Histórico.
-- Demonstração de Tool Calling tradicional (`obter_hora_atual`, `consultar_cotacao_moeda`).
-- Demonstração de Tool Calling via RTTI com a classe `TWeatherAPI` (`uWeatherTool.pas`), consultando a API real do OpenWeatherMap.
+- Demonstração de Tool Calling tradicional e RTTI declarativo (`TWeatherAPI`).
 
-> **Dica**: Para testar a ferramenta de clima no exemplo, copie `exemplos/simples/weather_tool/env-sample.ini` para `env.ini` e preencha sua chave do OpenWeatherMap.
+### 2. Geração e Edição de Imagens (`exemplos/imagem/`)
+- Interface visual dedicada para **Pollinations.ai** (100% grátis, padrão) e **Google Gemini** (Nano Banana).
+- Seletor de provedor e modelos (FLUX.1, Turbo, Realism, Nano Banana 2.1, 3.1 Flash, etc.).
+- Controle de Aspect Ratio (`1:1`, `16:9`, `9:16`, `3:2`, etc.), Resolução (`512px`, `1K`, `2K`, `4K`), Formato (`PNG`, `JPEG`, `WebP`) e Thinking Level.
+- Suporte a Grounding com Google Search e Google Image Search.
+- Suporte a Imagem de Referência para edição/composição visual (*Image-to-Image*).
+- Execução assíncrona com `TStopwatch` (não congela a UI), preview proporcional em tela cheia, cópia de Base64 e salvamento direto em disco.
 
 ---
 
@@ -228,6 +322,8 @@ O projeto inclui uma suíte completa de testes com o framework **DUnit**:
   - Poda e proteção de integridade no Sliding Window.
   - Resumo de mensagens.
   - Propagação e tratamento de exceções em ferramentas.
+  - Geração de imagens Gemini Nano Banana (payloads, search grounding, thinking levels, streams, decodificação Base64 e mocks).
+  - Geração de imagens Pollinations.ai (cálculo dinâmico de dimensões, proporções e mocks).
 
 ---
 
@@ -236,10 +332,11 @@ O projeto inclui uma suíte completa de testes com o framework **DUnit**:
 ```text
 Delphi4AI/
 ├── app/
-│   └── LLM.Factory.pas            # Factory para criacao de provedores
+│   └── LLM.Factory.pas            # Factory para criacao de provedores (LLM e Image)
 ├── llm/
 │   ├── LLM.Base.pas               # Implementacao base do provedor OpenAI
 │   ├── LLM.Interfaces.pas         # Interfaces fundamentais (ILLMProvider, ILLMTool, ILLMSender, etc.)
+│   ├── LLM.Image.Interfaces.pas   # Interfaces e tipos para geracao de imagens (ILLMImageProvider, etc.)
 │   ├── LLM.Client.pas             # Smart Record (TLLMClient) e executor tipado ILLMSender<T>
 │   ├── LLM.Schema.pas             # Atributos, gerador de schema e desserializador tipado
 │   ├── LLM.HistoryStrategy.pas    # Enums e definicoes de estrategia de contexto
@@ -254,9 +351,13 @@ Delphi4AI/
 ├── groq/
 │   └── Groq.Provider.pas          # Provedor nativo para Groq LPU (API ultra-rapida)
 ├── gemini/
-│   └── Gemini.Provider.pas        # Provedor nativo para Google Gemini (generateContent)
+│   ├── Gemini.Provider.pas        # Provedor nativo para Google Gemini (generateContent)
+│   └── Gemini.Image.Provider.pas  # Provedor nativo para Google Gemini Nano Banana (Interactions)
+├── pollinations/
+│   └── Pollinations.Image.Provider.pas # Provedor nativo 100% gratis Pollinations.ai (FLUX.1)
 ├── exemplos/
-│   └── simples/                   # Aplicacao demonstrativa VCL completa
+│   ├── simples/                   # Aplicacao VCL de Chat e Tool Calling
+│   └── imagem/                    # Aplicacao VCL de Geracao de Imagens (Pollinations + Gemini)
 ├── tests/                         # Suite de testes unitarios com DUnit
 └── Delphi4AI.dpk                  # Pacote de instalacao Delphi
 ```

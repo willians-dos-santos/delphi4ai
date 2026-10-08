@@ -27,7 +27,12 @@ uses
   Groq.Provider in '..\groq\Groq.Provider.pas',
   Test.Groq.Provider in 'Test.Groq.Provider.pas',
   Gemini.Provider in '..\gemini\Gemini.Provider.pas',
-  Test.Gemini.Provider in 'Test.Gemini.Provider.pas';
+  Test.Gemini.Provider in 'Test.Gemini.Provider.pas',
+  LLM.Image.Interfaces in '..\llm\LLM.Image.Interfaces.pas',
+  Gemini.Image.Provider in '..\gemini\Gemini.Image.Provider.pas',
+  Test.Gemini.Image.Provider in 'Test.Gemini.Image.Provider.pas',
+  Pollinations.Image.Provider in '..\pollinations\Pollinations.Image.Provider.pas',
+  Test.Pollinations.Image.Provider in 'Test.Pollinations.Image.Provider.pas';
 
 {$R *.res}
 
