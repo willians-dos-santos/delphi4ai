@@ -43,6 +43,11 @@ type
     is4K
   );
 
+const
+  is512 = is512px;
+
+type
+
   TLLMImageSizeHelper = record helper for TLLMImageSize
   public
     function ToString: string;
@@ -302,7 +307,7 @@ end;
 function TLLMImageSizeHelper.ToString: string;
 begin
   case Self of
-    is512px: Result := '512px';
+    is512px: Result := '512';
     is1K:    Result := '1K';
     is2K:    Result := '2K';
     is4K:    Result := '4K';

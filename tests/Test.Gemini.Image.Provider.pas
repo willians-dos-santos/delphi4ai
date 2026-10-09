@@ -527,7 +527,8 @@ begin
   CheckEquals('1K', is1K.ToString);
   CheckEquals('2K', is2K.ToString);
   CheckEquals('4K', is4K.ToString);
-  CheckEquals('512px', is512px.ToString);
+  CheckEquals('512', is512px.ToString);
+  CheckTrue(TLLMImageSize.FromString('512') = is512px);
   CheckTrue(TLLMImageSize.FromString('2K') = is2K);
   CheckTrue(TLLMImageSize.FromString('4K') = is4K);
 
