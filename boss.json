@@ -1,0 +1,11 @@
+{
+  "name": "delphi4ai",
+  "description": "Biblioteca nativa em Delphi para integracao com LLMs (OpenAI, Gemini, Groq, Ollama) e geracao de imagens (Gemini, Pollinations.ai)",
+  "version": "1.0.0",
+  "homepage": "https://github.com/willians-dos-santos/delphi4ai",
+  "mainsrc": "llm/;image/;image/gemini/;image/pollinations/;gemini/;groq/;ollama/;utils/",
+  "projects": [
+    "Delphi4AI.dpk"
+  ],
+  "dependencies": {}
+}

@@ -58,3 +58,6 @@ ModelSupport_*/
 TestInsightSettings.ini
 
 env.ini
+
+# Boss Dependency Manager
+modules/

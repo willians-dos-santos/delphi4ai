@@ -32,6 +32,34 @@ Projetada com foco em **baixo acoplamento**, **zero dependências externas** (ut
 
 ---
 
+## 📥 Instalação
+
+### Via Boss (Recomendado)
+
+Se você utiliza o gerenciador de dependências [Boss](https://github.com/HashLoad/boss), instale com apenas um comando no terminal:
+
+```bash
+boss install github.com/willians-dos-santos/delphi4ai
+```
+
+O Boss fará o download da biblioteca e configurará automaticamente os *Search Paths* no `.dproj` da sua aplicação.
+
+### Manualmente / Via Package (`.dpk`)
+
+1. Abra o arquivo `Delphi4AI.dpk` no Delphi.
+2. Compile o pacote (`Shift + F9`).
+3. Adicione as pastas ao *Library Path* da IDE ou ao *Search Path* do seu projeto:
+   - `llm`
+   - `image`
+   - `image/gemini`
+   - `image/pollinations`
+   - `gemini`
+   - `groq`
+   - `ollama`
+   - `utils`
+
+---
+
 ## ⚡ Início Rápido
 
 ### 1. Inicializando o Provedor
@@ -361,6 +389,7 @@ Delphi4AI/
 │   ├── simples/                   # Aplicacao VCL de Chat e Tool Calling
 │   └── imagem/                    # Aplicacao VCL de Geracao de Imagens (Pollinations + Gemini)
 ├── tests/                         # Suite de testes unitarios com DUnit
+├── boss.json                      # Manifesto de instalacao para o gerenciador Boss
 └── Delphi4AI.dpk                  # Pacote de instalacao Delphi
 ```
 
