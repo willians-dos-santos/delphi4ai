@@ -37,7 +37,7 @@ contains
   LLM.Base in 'llm\LLM.Base.pas',
   Utils.JSONArray in 'utils\Utils.JSONArray.pas',
   LLM.Exceptions in 'llm\LLM.Exceptions.pas',
-  LLM.Factory in 'app\LLM.Factory.pas',
+  LLM.Factory in 'llm\LLM.Factory.pas',
   LLM.Tools.Attributes in 'llm\LLM.Tools.Attributes.pas',
   LLM.Tools.RTTI in 'llm\LLM.Tools.RTTI.pas',
   LLM.Schema in 'llm\LLM.Schema.pas',
@@ -45,8 +45,9 @@ contains
   Ollama.Provider in 'ollama\Ollama.Provider.pas',
   Groq.Provider in 'groq\Groq.Provider.pas',
   Gemini.Provider in 'gemini\Gemini.Provider.pas',
-  LLM.Image.Interfaces in 'llm\LLM.Image.Interfaces.pas',
-  Gemini.Image.Provider in 'gemini\Gemini.Image.Provider.pas',
-  Pollinations.Image.Provider in 'pollinations\Pollinations.Image.Provider.pas';
+  Image.Interfaces in 'image\Image.Interfaces.pas',
+  Image.Factory in 'image\Image.Factory.pas',
+  Gemini.Image.Provider in 'image\gemini\Gemini.Image.Provider.pas',
+  Pollinations.Image.Provider in 'image\pollinations\Pollinations.Image.Provider.pas';
 
 end.

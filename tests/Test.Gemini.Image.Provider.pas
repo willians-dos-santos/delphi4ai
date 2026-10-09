@@ -7,7 +7,7 @@ uses
   System.Classes,
   System.JSON,
   TestFramework,
-  LLM.Image.Interfaces,
+  Image.Interfaces,
   Gemini.Image.Provider,
   LLM.Exceptions;
 
@@ -73,7 +73,7 @@ implementation
 
 uses
   System.Net.HttpClient,
-  LLM.Factory;
+  Image.Factory;
 
 const
   SAMPLE_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
@@ -492,7 +492,7 @@ procedure TTestGeminiImageProvider.TestFactory_CreateLLMImageProvider;
 var
   LProvider: ILLMImageProvider;
 begin
-  LProvider := CreateLLMImageProvider(ptGemini, 'chave_gemini_teste');
+  LProvider := CreateImageProvider(iptGemini, 'chave_gemini_teste');
   CheckNotNull(LProvider, 'Provedor Gemini criado pela factory nao deve ser nulo');
   CheckEquals('chave_gemini_teste', LProvider.ApiKey);
   CheckEquals(GEMINI_DEFAULT_IMAGE_MODEL, LProvider.Model);
@@ -504,12 +504,12 @@ var
 begin
   LExCaught := False;
   try
-    CreateLLMImageProvider(ptGroq, 'chave_groq');
+    CreateImageProvider(iptNone, 'chave_invalida');
   except
-    on E: ENotSupportedException do
+    on E: EArgumentException do
       LExCaught := True;
   end;
-  CheckTrue(LExCaught, 'Factory deve lancar ENotSupportedException para provedores sem suporte a imagem');
+  CheckTrue(LExCaught, 'Factory deve lancar EArgumentException para provedores sem suporte ou invalidos');
 end;
 
 procedure TTestGeminiImageProvider.TestEnumsAndHelpers;

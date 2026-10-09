@@ -1,4 +1,4 @@
-﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{A3D24842-D6D2-4742-88BF-A7851C812345}</ProjectGuid>
         <MainSource>Delphi4AI.Tests.dpr</MainSource>
@@ -84,7 +84,7 @@
         <DCCReference Include="..\llm\LLM.Interfaces.pas"/>
         <DCCReference Include="..\llm\LLM.Base.pas"/>
         <DCCReference Include="..\llm\LLM.Exceptions.pas"/>
-        <DCCReference Include="..\app\LLM.Factory.pas"/>
+        <DCCReference Include="..\llm\LLM.Factory.pas"/>
         <DCCReference Include="..\ollama\Ollama.Provider.pas"/>
         <DCCReference Include="Mocks\LLM.MockProvider.pas"/>
         <DCCReference Include="Test.Utils.JSONArray.pas"/>

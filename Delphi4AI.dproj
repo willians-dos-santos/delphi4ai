@@ -1,4 +1,4 @@
-﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{F8E93F1C-3CC2-4664-A8F6-2E33099DE133}</ProjectGuid>
         <MainSource>Delphi4AI.dpk</MainSource>
@@ -86,7 +86,7 @@
         <DCCReference Include="llm\LLM.Base.pas"/>
         <DCCReference Include="utils\Utils.JSONArray.pas"/>
         <DCCReference Include="llm\LLM.Exceptions.pas"/>
-        <DCCReference Include="app\LLM.Factory.pas"/>
+        <DCCReference Include="llm\LLM.Factory.pas"/>
         <DCCReference Include="llm\LLM.Tools.Attributes.pas"/>
         <DCCReference Include="llm\LLM.Tools.RTTI.pas"/>
         <BuildConfiguration Include="Base">

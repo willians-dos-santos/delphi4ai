@@ -1,4 +1,4 @@
-unit LLM.Image.Interfaces;
+unit Image.Interfaces;
 
 interface
 
@@ -243,6 +243,19 @@ type
     property Text: string read GetText;
     property InteractionId: string read GetInteractionId;
   end;
+
+  // Aliases modernos para simplificacao de uso
+  IImageItem = ILLMImageItem;
+  IImageResponse = ILLMImageResponse;
+  IImageProvider = ILLMImageProvider;
+  TImageItem = TLLMImageItem;
+  TImageResponse = TLLMImageResponse;
+  TImageRequest = TLLMImageRequest;
+  TImageReference = TLLMImageReference;
+  TImageAspectRatio = TLLMImageAspectRatio;
+  TImageSize = TLLMImageSize;
+  TImageMimeType = TLLMImageMimeType;
+  TImageThinkingLevel = TLLMImageThinkingLevel;
 
 implementation
 

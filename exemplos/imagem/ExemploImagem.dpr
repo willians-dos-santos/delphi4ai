@@ -2,14 +2,12 @@ program ExemploImagem;
 
 uses
   Vcl.Forms,
-  LLM.Image.Interfaces in '..\..\llm\LLM.Image.Interfaces.pas',
-  Gemini.Image.Provider in '..\..\gemini\Gemini.Image.Provider.pas',
-  Pollinations.Image.Provider in '..\..\pollinations\Pollinations.Image.Provider.pas',
-  LLM.Factory in '..\..\app\LLM.Factory.pas',
+  Image.Interfaces in '..\..\image\Image.Interfaces.pas',
+  Image.Factory in '..\..\image\Image.Factory.pas',
+  Gemini.Image.Provider in '..\..\image\gemini\Gemini.Image.Provider.pas',
+  Pollinations.Image.Provider in '..\..\image\pollinations\Pollinations.Image.Provider.pas',
   LLM.Exceptions in '..\..\llm\LLM.Exceptions.pas',
-  UnitImagem in 'UnitImagem.pas' {FormImagem},
-  Ollama.Provider in '..\..\ollama\Ollama.Provider.pas',
-  Groq.Provider in '..\..\groq\Groq.Provider.pas';
+  UnitImagem in 'UnitImagem.pas' {FormImagem};
 
 {$R *.res}
 

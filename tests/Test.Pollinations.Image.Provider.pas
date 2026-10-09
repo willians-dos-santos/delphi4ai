@@ -6,7 +6,7 @@ uses
   System.SysUtils,
   System.Classes,
   TestFramework,
-  LLM.Image.Interfaces,
+  Image.Interfaces,
   Pollinations.Image.Provider,
   LLM.Exceptions;
 
@@ -52,7 +52,7 @@ type
 implementation
 
 uses
-  LLM.Factory;
+  Image.Factory;
 
 { TMockPollinationsImageProvider }
 
@@ -159,7 +159,7 @@ procedure TTestPollinationsImageProvider.TestFactory_CreateLLMImageProvider;
 var
   LProv: ILLMImageProvider;
 begin
-  LProv := CreateLLMImageProvider(ptPollinations, '', 'turbo');
+  LProv := CreateImageProvider(iptPollinations, '', 'turbo');
   CheckNotNull(LProv);
   CheckEquals('turbo', LProv.Model);
 end;

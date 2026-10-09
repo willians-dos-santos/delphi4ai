@@ -8,7 +8,7 @@ uses
   System.JSON,
   System.Net.URLClient,
   System.Net.HttpClient,
-  LLM.Image.Interfaces,
+  Image.Interfaces,
   LLM.Exceptions;
 
 const

@@ -137,7 +137,7 @@ $(PreBuildEvent)]]></PreBuildEvent>
             <Form>Form1</Form>
             <FormType>dfm</FormType>
         </DCCReference>
-        <DCCReference Include="..\..\app\LLM.Factory.pas"/>
+        <DCCReference Include="..\..\llm\LLM.Factory.pas"/>
         <DCCReference Include="uWeatherTool.pas"/>
         <DCCReference Include="..\..\llm\LLM.Tools.Attributes.pas"/>
         <DCCReference Include="..\..\llm\LLM.Tools.RTTI.pas"/>
@@ -146,8 +146,6 @@ $(PreBuildEvent)]]></PreBuildEvent>
         <DCCReference Include="..\..\ollama\Ollama.Provider.pas"/>
         <DCCReference Include="..\..\groq\Groq.Provider.pas"/>
         <DCCReference Include="..\..\gemini\Gemini.Provider.pas"/>
-        <DCCReference Include="..\..\gemini\Gemini.Image.Provider.pas"/>
-        <DCCReference Include="..\..\pollinations\Pollinations.Image.Provider.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

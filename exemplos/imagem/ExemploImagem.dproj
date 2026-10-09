@@ -93,16 +93,14 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
-        <DCCReference Include="..\..\llm\LLM.Image.Interfaces.pas"/>
-        <DCCReference Include="..\..\gemini\Gemini.Image.Provider.pas"/>
-        <DCCReference Include="..\..\pollinations\Pollinations.Image.Provider.pas"/>
-        <DCCReference Include="..\..\app\LLM.Factory.pas"/>
+        <DCCReference Include="..\..\image\Image.Interfaces.pas"/>
+        <DCCReference Include="..\..\image\Image.Factory.pas"/>
+        <DCCReference Include="..\..\image\gemini\Gemini.Image.Provider.pas"/>
+        <DCCReference Include="..\..\image\pollinations\Pollinations.Image.Provider.pas"/>
         <DCCReference Include="..\..\llm\LLM.Exceptions.pas"/>
         <DCCReference Include="UnitImagem.pas">
             <Form>FormImagem</Form>
         </DCCReference>
-        <DCCReference Include="..\..\ollama\Ollama.Provider.pas"/>
-        <DCCReference Include="..\..\groq\Groq.Provider.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

@@ -16,7 +16,7 @@ uses
   LLM.Interfaces in '..\llm\LLM.Interfaces.pas',
   LLM.Base in '..\llm\LLM.Base.pas',
   LLM.Exceptions in '..\llm\LLM.Exceptions.pas',
-  LLM.Factory in '..\app\LLM.Factory.pas',
+  LLM.Factory in '..\llm\LLM.Factory.pas',
   Ollama.Provider in '..\ollama\Ollama.Provider.pas',
   LLM.MockProvider in 'Mocks\LLM.MockProvider.pas',
   Test.Utils.JSONArray in 'Test.Utils.JSONArray.pas',
@@ -28,10 +28,11 @@ uses
   Test.Groq.Provider in 'Test.Groq.Provider.pas',
   Gemini.Provider in '..\gemini\Gemini.Provider.pas',
   Test.Gemini.Provider in 'Test.Gemini.Provider.pas',
-  LLM.Image.Interfaces in '..\llm\LLM.Image.Interfaces.pas',
-  Gemini.Image.Provider in '..\gemini\Gemini.Image.Provider.pas',
+  Image.Interfaces in '..\image\Image.Interfaces.pas',
+  Image.Factory in '..\image\Image.Factory.pas',
+  Gemini.Image.Provider in '..\image\gemini\Gemini.Image.Provider.pas',
   Test.Gemini.Image.Provider in 'Test.Gemini.Image.Provider.pas',
-  Pollinations.Image.Provider in '..\pollinations\Pollinations.Image.Provider.pas',
+  Pollinations.Image.Provider in '..\image\pollinations\Pollinations.Image.Provider.pas',
   Test.Pollinations.Image.Provider in 'Test.Pollinations.Image.Provider.pas';
 
 {$R *.res}

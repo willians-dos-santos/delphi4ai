@@ -8,7 +8,7 @@ uses
   LLM.Base in '..\..\llm\LLM.Base.pas',
   Utils.JSONArray in '..\..\utils\Utils.JSONArray.pas',
   Unit1 in 'Unit1.pas' {Form1},
-  LLM.Factory in '..\..\app\LLM.Factory.pas',
+  LLM.Factory in '..\..\llm\LLM.Factory.pas',
   uWeatherTool in 'uWeatherTool.pas',
   LLM.Tools.Attributes in '..\..\llm\LLM.Tools.Attributes.pas',
   LLM.Tools.RTTI in '..\..\llm\LLM.Tools.RTTI.pas',
@@ -16,9 +16,7 @@ uses
   LLM.Client in '..\..\llm\LLM.Client.pas',
   Ollama.Provider in '..\..\ollama\Ollama.Provider.pas',
   Groq.Provider in '..\..\groq\Groq.Provider.pas',
-  Gemini.Provider in '..\..\gemini\Gemini.Provider.pas',
-  Gemini.Image.Provider in '..\..\gemini\Gemini.Image.Provider.pas',
-  Pollinations.Image.Provider in '..\..\pollinations\Pollinations.Image.Provider.pas';
+  Gemini.Provider in '..\..\gemini\Gemini.Provider.pas';
 
 {$R *.res}
 

@@ -18,8 +18,8 @@ Projetada com foco em **baixo acoplamento**, **zero dependências externas** (ut
   - **Sliding Window (`hsSlidingWindow`)**: Janela deslizante com proteção atômica de blocos de tools (nunca deixa chamadas de ferramentas ou resultados órfãos).
   - **Summarization (`hsSummarize`)**: Compactação e resumo automático do histórico antigo usando a própria IA.
 - **Geração de Imagens (Pollinations.ai & Google Gemini Nano Banana)**:
-  - **Pollinations.ai (`ptPollinations`)**: **100% Grátis**, sem necessidade de chave de API, alta velocidade com modelos **FLUX.1**, turbo, fotorrealismo e anime. Perfeito para testes imediatos e produção sem custo.
-  - **Google Gemini (`ptGemini`)**: Suporte nativo à API Interactions (`gemini-nano-banana-2.1`, `gemini-3.1-flash-image`, `gemini-3-pro-image`), com controle de resoluções (1K/2K/4K), proporções de aspecto, Grounding com Google Search e exportação direta em RTL (Bytes/Stream/File).
+  - **Pollinations.ai (`iptPollinations`)**: **100% Grátis**, sem necessidade de chave de API, alta velocidade com modelos **FLUX.1**, turbo, fotorrealismo e anime. Perfeito para testes imediatos e produção sem custo.
+  - **Google Gemini (`iptGemini`)**: Suporte nativo à API Interactions (`gemini-nano-banana-2.1`, `gemini-3.1-flash-image`, `gemini-3-pro-image`), com controle de resoluções (1K/2K/4K), proporções de aspecto, Grounding com Google Search e exportação direta em RTL (Bytes/Stream/File).
 - **Design Baseado em Interfaces**: Totalmente testável e desacoplado através de `ILLMProvider`, `ILLMToolRegistry` e `ILLMImageProvider`.
 - **Suíte de Testes com DUnit**: Testes automatizados cobrindo requisições, parsing de chamadas de ferramentas, poda de histórico, RTTI e geração de imagens.
 
@@ -216,15 +216,15 @@ Ideal para desenvolvimento, testes imediatos e prototipagem com os modelos **FLU
 
 ```delphi
 uses
-  LLM.Image.Interfaces,
-  LLM.Factory;
+  Image.Interfaces,
+  Image.Factory;
 
 var
   ImageGen: ILLMImageProvider;
   Response: ILLMImageResponse;
 begin
   // Sem chave de API! Modelo padrao 'flux'
-  ImageGen := CreateLLMImageProvider(ptPollinations);
+  ImageGen := CreateImageProvider(iptPollinations);
 
   Response := ImageGen.Generate('A photo of a cute red panda wearing a tiny bamboo hat');
   Response.First.SaveToFile('panda.jpg');
@@ -258,7 +258,7 @@ var
   ImageGen: ILLMImageProvider;
   Response: ILLMImageResponse;
 begin
-  ImageGen := CreateLLMImageProvider(ptGemini, 'sua-gemini-api-key');
+  ImageGen := CreateImageProvider(iptGemini, 'sua-gemini-api-key');
 
   Response := ImageGen.Generate(
     TLLMImageRequest.New('Infográfico do clima dos próximos 5 dias em São Paulo com tabela estilizada')
@@ -331,12 +331,10 @@ O projeto inclui uma suíte completa de testes com o framework **DUnit**:
 
 ```text
 Delphi4AI/
-├── app/
-│   └── LLM.Factory.pas            # Factory para criacao de provedores (LLM e Image)
 ├── llm/
 │   ├── LLM.Base.pas               # Implementacao base do provedor OpenAI
 │   ├── LLM.Interfaces.pas         # Interfaces fundamentais (ILLMProvider, ILLMTool, ILLMSender, etc.)
-│   ├── LLM.Image.Interfaces.pas   # Interfaces e tipos para geracao de imagens (ILLMImageProvider, etc.)
+│   ├── LLM.Factory.pas            # Factory para criacao de provedores de Chat/LLM
 │   ├── LLM.Client.pas             # Smart Record (TLLMClient) e executor tipado ILLMSender<T>
 │   ├── LLM.Schema.pas             # Atributos, gerador de schema e desserializador tipado
 │   ├── LLM.HistoryStrategy.pas    # Enums e definicoes de estrategia de contexto
@@ -344,6 +342,13 @@ Delphi4AI/
 │   ├── LLM.Tools.pas              # Registro e despacho de tools manuais
 │   ├── LLM.Tools.Attributes.pas   # Atributos [TLLMTool] e [TLLMParam]
 │   └── LLM.Tools.RTTI.pas         # Mecanismo de reflexao e execucao via RTTI
+├── image/
+│   ├── Image.Interfaces.pas       # Interfaces e tipos para geracao de imagens (IImageProvider, etc.)
+│   ├── Image.Factory.pas          # Factory exclusiva para criacao de provedores de imagem
+│   ├── gemini/
+│   │   └── Gemini.Image.Provider.pas  # Provedor nativo para Google Gemini Nano Banana (Interactions)
+│   └── pollinations/
+│       └── Pollinations.Image.Provider.pas # Provedor nativo 100% gratis Pollinations.ai (FLUX.1)
 ├── utils/
 │   └── Utils.JSONArray.pas        # Utilitarios e helpers para manipulação de arrays JSON
 ├── ollama/
@@ -351,10 +356,7 @@ Delphi4AI/
 ├── groq/
 │   └── Groq.Provider.pas          # Provedor nativo para Groq LPU (API ultra-rapida)
 ├── gemini/
-│   ├── Gemini.Provider.pas        # Provedor nativo para Google Gemini (generateContent)
-│   └── Gemini.Image.Provider.pas  # Provedor nativo para Google Gemini Nano Banana (Interactions)
-├── pollinations/
-│   └── Pollinations.Image.Provider.pas # Provedor nativo 100% gratis Pollinations.ai (FLUX.1)
+│   └── Gemini.Provider.pas        # Provedor nativo para Google Gemini (generateContent)
 ├── exemplos/
 │   ├── simples/                   # Aplicacao VCL de Chat e Tool Calling
 │   └── imagem/                    # Aplicacao VCL de Geracao de Imagens (Pollinations + Gemini)

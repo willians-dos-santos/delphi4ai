@@ -19,8 +19,8 @@ uses
   Vcl.Imaging.jpeg,
   Vcl.Imaging.pngimage,
   Vcl.Clipbrd,
-  LLM.Image.Interfaces,
-  LLM.Factory,
+  Image.Interfaces,
+  Image.Factory,
   LLM.Exceptions,
   Gemini.Image.Provider,
   Pollinations.Image.Provider;
@@ -426,7 +426,7 @@ end;
 procedure TFormImagem.btnGerarClick(Sender: TObject);
 var
   LIsPollinations: Boolean;
-  LProviderType: TLLMProviderType;
+  LProviderType: TImageProviderType;
   LApiKey, LPrompt, LModel: string;
   LReq: TLLMImageRequest;
   LRefPath: string;
@@ -458,9 +458,9 @@ begin
 
   // Define o provedor correspondente
   if LIsPollinations then
-    LProviderType := ptPollinations
+    LProviderType := iptPollinations
   else
-    LProviderType := ptGemini;
+    LProviderType := iptGemini;
 
   // Monta a requisicao fluente
   LReq := TLLMImageRequest.New(LPrompt)
@@ -502,7 +502,7 @@ begin
       LTextResp := EmptyStr;
 
       try
-        LProvider := CreateLLMImageProvider(LProviderType, LApiKey, LModel);
+        LProvider := CreateImageProvider(LProviderType, LApiKey, LModel);
         LResp := LProvider.Generate(LReq);
 
         if LResp.HasImages then

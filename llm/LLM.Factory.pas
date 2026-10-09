@@ -3,14 +3,13 @@ unit LLM.Factory;
 interface
 
 uses
-  LLM.Interfaces,
-  LLM.Image.Interfaces;
+  LLM.Interfaces;
 
 type
   /// <summary>
-  /// Tipos de provedores suportados pelo Delphi4AI
+  /// Tipos de provedores de chat/LLM suportados pelo Delphi4AI
   /// </summary>
-  TLLMProviderType = (ptOpenAI, ptOllama, ptGroq, ptGemini, ptPollinations, ptNone);
+  TLLMProviderType = (ptOpenAI, ptOllama, ptGroq, ptGemini, ptNone);
 
   TLLMProviderTypeHelper = record helper for TLLMProviderType
   public
@@ -33,13 +32,6 @@ function CreateLLMProvider(AProviderType: TLLMProviderType;
 function CreateLLMProvider(const AApiKey: string;
   const ABaseURL: string = ''; const AModel: string = ''): ILLMProvider; overload;
 
-/// <summary>
-/// Factory para criacao de provedores de geracao de imagem
-/// </summary>
-function CreateLLMImageProvider(AProviderType: TLLMProviderType;
-  const AApiKey: string = ''; const AModel: string = '';
-  const ABaseURL: string = ''): ILLMImageProvider; overload;
-
 implementation
 
 uses
@@ -48,9 +40,7 @@ uses
   LLM.Base,
   Ollama.Provider,
   Groq.Provider,
-  Gemini.Provider,
-  Gemini.Image.Provider,
-  Pollinations.Image.Provider;
+  Gemini.Provider;
 
 type
   TCreatorLLMProvider = function(const AApiKey, AModel, ABaseURL: string): ILLMProvider;
@@ -61,7 +51,6 @@ const
     'Ollama',
     'Groq',
     'Gemini',
-    'Pollinations',
     ''
   );
 
@@ -146,7 +135,6 @@ const
     CreateOllamaProvider,
     CreateGroqProvider,
     CreateGeminiProvider,
-    CreateNoneProvider,
     CreateNoneProvider
   );
 
@@ -163,19 +151,6 @@ function CreateLLMProvider(const AApiKey: string;
   const ABaseURL: string; const AModel: string): ILLMProvider;
 begin
   Result := CreateLLMProvider(ptOpenAI, AApiKey, AModel, ABaseURL);
-end;
-
-function CreateLLMImageProvider(AProviderType: TLLMProviderType;
-  const AApiKey: string; const AModel: string; const ABaseURL: string): ILLMImageProvider;
-begin
-  case AProviderType of
-    ptGemini:
-      Result := TGeminiImageProvider.Create(AApiKey, AModel, ABaseURL);
-    ptPollinations:
-      Result := TPollinationsImageProvider.Create(AModel, ABaseURL, AApiKey);
-  else
-    raise ENotSupportedException.CreateFmt('O provedor %s não suporta geração de imagens!', [AProviderType.ToString]);
-  end;
 end;
 
 { TLLMProviderTypeHelper }

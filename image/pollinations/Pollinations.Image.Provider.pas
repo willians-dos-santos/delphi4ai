@@ -1,4 +1,4 @@
-unit Pollinations.Image.Provider;
+﻿unit Pollinations.Image.Provider;
 
 interface
 
@@ -8,7 +8,7 @@ uses
   System.Net.URLClient,
   System.Net.HttpClient,
   System.NetEncoding,
-  LLM.Image.Interfaces,
+  Image.Interfaces,
   LLM.Exceptions;
 
 const
