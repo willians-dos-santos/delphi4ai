@@ -2,6 +2,7 @@ unit LLM.Interfaces;
 
 interface
 uses
+  System.SysUtils,
   System.JSON,
   LLM.HistoryStrategy,
   LLM.Tools;
@@ -9,6 +10,34 @@ uses
 type
 
   ILLMResponseFormat = interface;
+
+  /// <summary>
+  /// Informacoes de consumo de tokens da requisicao
+  /// </summary>
+  TLLMUsage = record
+  private
+    FPromptTokens: Integer;
+    FCompletionTokens: Integer;
+    FTotalTokens: Integer;
+  public
+    class function Create(APrompt, ACompletion: Integer; ATotal: Integer = 0): TLLMUsage; static;
+    procedure Clear;
+    function HasUsage: Boolean;
+    function ToString: string;
+
+    class operator Add(const ALeft, ARight: TLLMUsage): TLLMUsage;
+    class operator Equal(const ALeft, ARight: TLLMUsage): Boolean;
+    class operator NotEqual(const ALeft, ARight: TLLMUsage): Boolean;
+
+    property PromptTokens: Integer read FPromptTokens write FPromptTokens;
+    property CompletionTokens: Integer read FCompletionTokens write FCompletionTokens;
+    property TotalTokens: Integer read FTotalTokens write FTotalTokens;
+  end;
+
+  /// <summary>
+  /// Callback de notificacao de consumo de tokens
+  /// </summary>
+  TOnTokenUsageEvent = reference to procedure(const AUsage: TLLMUsage);
 
   /// <summary>
   /// Interface especializada para envio fluente e retorno tipado estruturado (Record ou Class)
@@ -129,6 +158,21 @@ type
     property OnBeforeExecuteTool: TOnBeforeExecuteToolEvent read GetOnBeforeExecuteTool write SetOnBeforeExecuteTool;
     property OnAfterExecuteTool: TOnAfterExecuteToolEvent read GetOnAfterExecuteTool write SetOnAfterExecuteTool;
 
+    // Getters e Setters de Consumo de Tokens (Usage)
+    function GetUsage: TLLMUsage;
+    function GetPromptTokens: Integer;
+    function GetCompletionTokens: Integer;
+    function GetTotalTokens: Integer;
+    function GetOnTokenUsage: TOnTokenUsageEvent;
+    procedure SetOnTokenUsage(const Value: TOnTokenUsageEvent);
+
+    // Propriedades de Consumo de Tokens
+    property Usage: TLLMUsage read GetUsage;
+    property PromptTokens: Integer read GetPromptTokens;
+    property CompletionTokens: Integer read GetCompletionTokens;
+    property TotalTokens: Integer read GetTotalTokens;
+    property OnTokenUsage: TOnTokenUsageEvent read GetOnTokenUsage write SetOnTokenUsage;
+
     // Suporte a Saidas Estruturadas (Structured Outputs)
     function GetResponseFormat: ILLMResponseFormat;
     function SendAsJSON: TJSONObject;
@@ -242,5 +286,54 @@ type
   end;
 
 implementation
+
+{ TLLMUsage }
+
+class function TLLMUsage.Create(APrompt, ACompletion, ATotal: Integer): TLLMUsage;
+begin
+  Result.FPromptTokens := APrompt;
+  Result.FCompletionTokens := ACompletion;
+  if ATotal > 0 then
+    Result.FTotalTokens := ATotal
+  else
+    Result.FTotalTokens := APrompt + ACompletion;
+end;
+
+procedure TLLMUsage.Clear;
+begin
+  FPromptTokens := 0;
+  FCompletionTokens := 0;
+  FTotalTokens := 0;
+end;
+
+function TLLMUsage.HasUsage: Boolean;
+begin
+  Result := (FPromptTokens > 0) or (FCompletionTokens > 0) or (FTotalTokens > 0);
+end;
+
+function TLLMUsage.ToString: string;
+begin
+  Result := Format('Prompt: %d, Completion: %d, Total: %d',
+    [FPromptTokens, FCompletionTokens, FTotalTokens]);
+end;
+
+class operator TLLMUsage.Add(const ALeft, ARight: TLLMUsage): TLLMUsage;
+begin
+  Result.FPromptTokens := ALeft.FPromptTokens + ARight.FPromptTokens;
+  Result.FCompletionTokens := ALeft.FCompletionTokens + ARight.FCompletionTokens;
+  Result.FTotalTokens := ALeft.FTotalTokens + ARight.FTotalTokens;
+end;
+
+class operator TLLMUsage.Equal(const ALeft, ARight: TLLMUsage): Boolean;
+begin
+  Result := (ALeft.FPromptTokens = ARight.FPromptTokens) and
+            (ALeft.FCompletionTokens = ARight.FCompletionTokens) and
+            (ALeft.FTotalTokens = ARight.FTotalTokens);
+end;
+
+class operator TLLMUsage.NotEqual(const ALeft, ARight: TLLMUsage): Boolean;
+begin
+  Result := not (ALeft = ARight);
+end;
 
 end.

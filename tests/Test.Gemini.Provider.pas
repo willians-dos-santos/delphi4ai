@@ -241,6 +241,7 @@ begin
   Result := EmptyStr;
   ARawJSON := EmptyStr;
   SetLastToolCalls([]);
+  FUsage.Clear;
 
   if FMockStatusCode <> 200 then
     raise ELLMAPIError.CreateFmt('Erro API Gemini [%d]: %s',
@@ -285,6 +286,15 @@ begin
       FCandidatesTokenCount := LUsageObj.GetValue<Integer>
         ('candidatesTokenCount', 0);
       FTotalTokenCount := LUsageObj.GetValue<Integer>('totalTokenCount', 0);
+
+      FUsage.PromptTokens := FPromptTokenCount;
+      FUsage.CompletionTokens := FCandidatesTokenCount;
+      FUsage.TotalTokens := FTotalTokenCount;
+      if (FUsage.TotalTokens = 0) and ((FUsage.PromptTokens > 0) or (FUsage.CompletionTokens > 0)) then
+        FUsage.TotalTokens := FUsage.PromptTokens + FUsage.CompletionTokens;
+
+      if Assigned(FOnTokenUsage) then
+        FOnTokenUsage(FUsage);
     end;
 
     LCandidatesVal := LJSON.FindValue('candidates');
@@ -398,6 +408,9 @@ begin
     'CandidatesTokenCount inicial deve ser 0');
   CheckEquals(0, FProvider.TotalTokenCount,
     'TotalTokenCount inicial deve ser 0');
+  CheckEquals(0, FProvider.PromptTokens, 'PromptTokens inicial deve ser 0');
+  CheckEquals(0, FProvider.CompletionTokens, 'CompletionTokens inicial deve ser 0');
+  CheckEquals(0, FProvider.TotalTokens, 'TotalTokens inicial deve ser 0');
 end;
 
 procedure TTestGeminiProvider.TestGetGenerateContentURL;
@@ -910,6 +923,10 @@ begin
   CheckEquals(25, FProvider.CandidatesTokenCount,
     'CandidatesTokenCount deve ser 25');
   CheckEquals(40, FProvider.TotalTokenCount, 'TotalTokenCount deve ser 40');
+  CheckEquals(15, FProvider.PromptTokens, 'PromptTokens deve ser 15');
+  CheckEquals(25, FProvider.CompletionTokens, 'CompletionTokens deve ser 25');
+  CheckEquals(40, FProvider.TotalTokens, 'TotalTokens deve ser 40');
+  CheckEquals(40, FProvider.Usage.TotalTokens, 'Usage.TotalTokens deve ser 40');
 end;
 
 procedure TTestGeminiProvider.TestSend_ToolCallsLoop;

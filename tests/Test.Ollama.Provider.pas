@@ -31,7 +31,9 @@ type
       const ABaseURL: string = 'http://localhost:11434/api/chat';
       const AApiKey: string = '');
 
-    procedure SetMockResponse(const AContent: string);
+    procedure SetMockResponse(const AContent: string); overload;
+    procedure SetMockResponse(const AContent: string;
+      APromptEvalCount, AEvalCount: Integer); overload;
     procedure SetMockRawJSON(const ARawJSON: string);
     procedure SetMockError(const AStatusCode: Integer; const AErrorMsg: string);
     procedure SetMockToolCall(const AFuncName, AArgsJSON: string; const AContent: string = ''; const AToolId: string = '');
@@ -59,6 +61,7 @@ type
     procedure TestBuildBodyJSON_WithTools;
     procedure TestExtractErrorMessage_OllamaFormat;
     procedure TestSend_SimpleMessage;
+    procedure TestSend_CapturesTokenUsage;
     procedure TestSend_ToolCallsWithJsonObjectArgs;
     procedure TestSend_ToolCallsWithJsonStringArgs;
     procedure TestAppendAssistantToolCallsToHistory;
@@ -87,6 +90,28 @@ begin
   FMockStatusCode := 200;
   FMockResponseContent := AContent;
   FMockRawJSON := EmptyStr;
+end;
+
+procedure TMockOllamaProvider.SetMockResponse(const AContent: string;
+  APromptEvalCount, AEvalCount: Integer);
+var
+  LRoot, LMsg: TJSONObject;
+begin
+  LRoot := TJSONObject.Create;
+  try
+    LRoot.AddPair('model', FModel);
+    LMsg := TJSONObject.Create;
+    LMsg.AddPair('role', 'assistant');
+    LMsg.AddPair('content', AContent);
+    LRoot.AddPair('message', LMsg);
+    LRoot.AddPair('done', True);
+    LRoot.AddPair('prompt_eval_count', TJSONNumber.Create(APromptEvalCount));
+    LRoot.AddPair('eval_count', TJSONNumber.Create(AEvalCount));
+    FMockStatusCode := 200;
+    FMockRawJSON := LRoot.ToJSON;
+  finally
+    LRoot.Free;
+  end;
 end;
 
 procedure TMockOllamaProvider.SetMockRawJSON(const ARawJSON: string);
@@ -167,6 +192,7 @@ begin
   Result := EmptyStr;
   ARawJSON := EmptyStr;
   SetLastToolCalls([]);
+  FUsage.Clear;
 
   if FMockStatusCode <> 200 then
   begin
@@ -247,6 +273,14 @@ begin
         else
           Result := EmptyStr;
       end;
+
+      // Parse de consumo de tokens do Ollama
+      FUsage.PromptTokens := LRoot.GetValue<Integer>('prompt_eval_count', 0);
+      FUsage.CompletionTokens := LRoot.GetValue<Integer>('eval_count', 0);
+      FUsage.TotalTokens := FUsage.PromptTokens + FUsage.CompletionTokens;
+
+      if FUsage.HasUsage and Assigned(FOnTokenUsage) then
+        FOnTokenUsage(FUsage);
     finally
       LRoot.Free;
     end;
@@ -397,6 +431,35 @@ begin
   CheckEquals('assistant',
     TJSONObject(FProvider.Messages.Items[1]).GetValue<string>('role', ''),
     'Role da resposta deve ser assistant');
+end;
+
+procedure TTestOllamaProvider.TestSend_CapturesTokenUsage;
+var
+  LResp: string;
+  LCallbackFired: Boolean;
+  LCallbackUsage: TLLMUsage;
+begin
+  LCallbackFired := False;
+  FProvider.OnTokenUsage := procedure(const AUsage: TLLMUsage)
+    begin
+      LCallbackFired := True;
+      LCallbackUsage := AUsage;
+    end;
+
+  FProvider.SetMockResponse('Ollama com tokens', 24, 56);
+  FProvider.AddUser('Diga algo');
+  LResp := FProvider.Send;
+
+  CheckEquals('Ollama com tokens', LResp);
+  CheckEquals(24, FProvider.PromptTokens, 'PromptTokens deve ser 24');
+  CheckEquals(56, FProvider.CompletionTokens, 'CompletionTokens deve ser 56');
+  CheckEquals(80, FProvider.TotalTokens, 'TotalTokens deve ser 80');
+  CheckEquals(80, FProvider.Usage.TotalTokens, 'Usage.TotalTokens deve ser 80');
+
+  CheckTrue(LCallbackFired, 'OnTokenUsage deveria ter sido disparado');
+  CheckEquals(24, LCallbackUsage.PromptTokens, 'Callback PromptTokens deve ser 24');
+  CheckEquals(56, LCallbackUsage.CompletionTokens, 'Callback CompletionTokens deve ser 56');
+  CheckEquals(80, LCallbackUsage.TotalTokens, 'Callback TotalTokens deve ser 80');
 end;
 
 procedure TTestOllamaProvider.TestSend_ToolCallsWithJsonObjectArgs;

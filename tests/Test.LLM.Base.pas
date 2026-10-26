@@ -1,4 +1,4 @@
-﻿unit Test.LLM.Base;
+unit Test.LLM.Base;
 
 interface
 
@@ -36,6 +36,9 @@ type
     procedure TestSend_WithoutAutoAddAssistantResponse;
     procedure TestSend_RaisesExceptionOnError;
     procedure TestSummarizeHistory;
+    procedure TestUsage_RecordMethods;
+    procedure TestSend_CapturesTokenUsage;
+    procedure TestSend_FiresOnTokenUsageCallback;
   end;
 
 implementation
@@ -91,6 +94,10 @@ begin
     'KeepRecentMessages padrão deve ser 4');
   CheckEquals(0, FProvider.Messages.Count,
     'Histórico inicial deve estar vazio');
+  CheckEquals(0, FProvider.PromptTokens, 'PromptTokens inicial deve ser 0');
+  CheckEquals(0, FProvider.CompletionTokens, 'CompletionTokens inicial deve ser 0');
+  CheckEquals(0, FProvider.TotalTokens, 'TotalTokens inicial deve ser 0');
+  CheckFalse(FProvider.Usage.HasUsage, 'Usage inicial não deve ter consumo');
 end;
 
 procedure TTestLLMBase.TestAddMessages;
@@ -365,6 +372,71 @@ begin
 
   CheckEquals('Msg Recente', GetMessageProperty(2, 'content'));
   CheckEquals('Resp Recente', GetMessageProperty(3, 'content'));
+end;
+
+procedure TTestLLMBase.TestUsage_RecordMethods;
+var
+  LU1, LU2, LU3: TLLMUsage;
+begin
+  LU1 := TLLMUsage.Create(10, 20);
+  CheckEquals(10, LU1.PromptTokens);
+  CheckEquals(20, LU1.CompletionTokens);
+  CheckEquals(30, LU1.TotalTokens);
+  CheckTrue(LU1.HasUsage);
+
+  LU2 := TLLMUsage.Create(5, 5, 15);
+  CheckEquals(15, LU2.TotalTokens);
+
+  LU3 := LU1 + LU2;
+  CheckEquals(15, LU3.PromptTokens);
+  CheckEquals(25, LU3.CompletionTokens);
+  CheckEquals(45, LU3.TotalTokens);
+
+  CheckTrue(LU1 = TLLMUsage.Create(10, 20, 30));
+  CheckTrue(LU1 <> LU2);
+
+  LU1.Clear;
+  CheckFalse(LU1.HasUsage);
+  CheckEquals(0, LU1.TotalTokens);
+end;
+
+procedure TTestLLMBase.TestSend_CapturesTokenUsage;
+var
+  LResp: string;
+begin
+  FProvider.SetMockResponse('Resposta de teste com tokens', 12, 34, 46);
+  FProvider.AddUser('Olá');
+  LResp := FProvider.Send;
+
+  CheckEquals('Resposta de teste com tokens', LResp);
+  CheckEquals(12, FProvider.PromptTokens, 'PromptTokens deve ser 12');
+  CheckEquals(34, FProvider.CompletionTokens, 'CompletionTokens deve ser 34');
+  CheckEquals(46, FProvider.TotalTokens, 'TotalTokens deve ser 46');
+  CheckEquals(46, FProvider.Usage.TotalTokens, 'Usage.TotalTokens deve ser 46');
+end;
+
+procedure TTestLLMBase.TestSend_FiresOnTokenUsageCallback;
+var
+  LResp: string;
+  LFired: Boolean;
+  LCaptured: TLLMUsage;
+begin
+  LFired := False;
+  FProvider.OnTokenUsage := procedure(const AUsage: TLLMUsage)
+    begin
+      LFired := True;
+      LCaptured := AUsage;
+    end;
+
+  FProvider.SetMockResponse('Teste callback', 50, 25, 75);
+  FProvider.AddUser('Olá callback');
+  LResp := FProvider.Send;
+
+  CheckEquals('Teste callback', LResp);
+  CheckTrue(LFired, 'OnTokenUsage deveria ter sido disparado');
+  CheckEquals(50, LCaptured.PromptTokens);
+  CheckEquals(25, LCaptured.CompletionTokens);
+  CheckEquals(75, LCaptured.TotalTokens);
 end;
 
 initialization

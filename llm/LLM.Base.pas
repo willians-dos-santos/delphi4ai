@@ -64,6 +64,14 @@ type
     function GetOnAfterExecuteTool: TOnAfterExecuteToolEvent;
     procedure SetOnAfterExecuteTool(const Value: TOnAfterExecuteToolEvent);
 
+    // Getters e Setters de Consumo de Tokens (Usage)
+    function GetUsage: TLLMUsage;
+    function GetPromptTokens: Integer;
+    function GetCompletionTokens: Integer;
+    function GetTotalTokens: Integer;
+    function GetOnTokenUsage: TOnTokenUsageEvent;
+    procedure SetOnTokenUsage(const Value: TOnTokenUsageEvent);
+
   protected
     FApiKey: string;
     FBaseURL: string;
@@ -92,6 +100,10 @@ type
     FHasToolCalls: Boolean;
     FOnBeforeExecuteTool: TOnBeforeExecuteToolEvent;
     FOnAfterExecuteTool: TOnAfterExecuteToolEvent;
+
+    // Consumo de tokens
+    FUsage: TLLMUsage;
+    FOnTokenUsage: TOnTokenUsageEvent;
 
     // Configuracoes de Saidas Estruturadas (Structured Output)
     FResponseFormat: ILLMResponseFormat;
@@ -174,6 +186,13 @@ type
     property OnBeforeExecuteTool: TOnBeforeExecuteToolEvent read GetOnBeforeExecuteTool write SetOnBeforeExecuteTool;
     property OnAfterExecuteTool: TOnAfterExecuteToolEvent read GetOnAfterExecuteTool write SetOnAfterExecuteTool;
 
+    // Propriedades de Consumo de Tokens
+    property Usage: TLLMUsage read GetUsage;
+    property PromptTokens: Integer read GetPromptTokens;
+    property CompletionTokens: Integer read GetCompletionTokens;
+    property TotalTokens: Integer read GetTotalTokens;
+    property OnTokenUsage: TOnTokenUsageEvent read GetOnTokenUsage write SetOnTokenUsage;
+
     // Metodos e propriedades de Saidas Estruturadas (Structured Output)
     function SendAsJSON: TJSONObject;
     function SendAs(AClass: TClass): TObject; overload;
@@ -227,6 +246,9 @@ begin
   SetLength(FLastToolCalls, 0);
   FOnBeforeExecuteTool := nil;
   FOnAfterExecuteTool := nil;
+
+  FUsage.Clear;
+  FOnTokenUsage := nil;
 
   FMessages := TJSONArray.Create;
   FHttpClient := THTTPClient.Create;
@@ -508,7 +530,7 @@ var
   LVal: TJSONValue;
   LJSON, LChoice, LMsg: TJSONObject;
   LChoices, LToolCallsArr: TJSONArray;
-  LChoicesVal, LMsgVal, LToolsVal, LFuncVal, LContentVal: TJSONValue;
+  LChoicesVal, LMsgVal, LToolsVal, LFuncVal, LContentVal, LUsageVal: TJSONValue;
   I: Integer;
   LCallObj, LFuncObj: TJSONObject;
   LId, LName, LArgs: string;
@@ -517,6 +539,7 @@ begin
   Result := EmptyStr;
   ARawJSON := EmptyStr;
   SetLastToolCalls([]);
+  FUsage.Clear;
 
   FHttpClient.ConnectionTimeout := FTimeout;
   FHttpClient.ResponseTimeout := FTimeout;
@@ -596,6 +619,20 @@ begin
       Result := LContentVal.Value
     else
       Result := EmptyStr;
+
+    // Leitura do consumo de tokens (OpenAI, Groq e compativeis)
+    LUsageVal := LJSON.FindValue('usage');
+    if LUsageVal is TJSONObject then
+    begin
+      FUsage.PromptTokens := TJSONObject(LUsageVal).GetValue<Integer>('prompt_tokens', 0);
+      FUsage.CompletionTokens := TJSONObject(LUsageVal).GetValue<Integer>('completion_tokens', 0);
+      FUsage.TotalTokens := TJSONObject(LUsageVal).GetValue<Integer>('total_tokens', 0);
+      if (FUsage.TotalTokens = 0) and ((FUsage.PromptTokens > 0) or (FUsage.CompletionTokens > 0)) then
+        FUsage.TotalTokens := FUsage.PromptTokens + FUsage.CompletionTokens;
+
+      if Assigned(FOnTokenUsage) then
+        FOnTokenUsage(FUsage);
+    end;
   finally
     LJSON.Free;
   end;
@@ -1071,6 +1108,36 @@ end;
 procedure TLLMProviderBase.SetTimeout(const Value: Integer);
 begin
   FTimeout := Value;
+end;
+
+function TLLMProviderBase.GetUsage: TLLMUsage;
+begin
+  Result := FUsage;
+end;
+
+function TLLMProviderBase.GetPromptTokens: Integer;
+begin
+  Result := FUsage.PromptTokens;
+end;
+
+function TLLMProviderBase.GetCompletionTokens: Integer;
+begin
+  Result := FUsage.CompletionTokens;
+end;
+
+function TLLMProviderBase.GetTotalTokens: Integer;
+begin
+  Result := FUsage.TotalTokens;
+end;
+
+function TLLMProviderBase.GetOnTokenUsage: TOnTokenUsageEvent;
+begin
+  Result := FOnTokenUsage;
+end;
+
+procedure TLLMProviderBase.SetOnTokenUsage(const Value: TOnTokenUsageEvent);
+begin
+  FOnTokenUsage := Value;
 end;
 
 procedure TLLMProviderBase.RegisterTool(const AClass: TClass);

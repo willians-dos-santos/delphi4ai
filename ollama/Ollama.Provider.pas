@@ -171,6 +171,7 @@ begin
   Result := EmptyStr;
   ARawJSON := EmptyStr;
   SetLastToolCalls([]);
+  FUsage.Clear;
 
   FHttpClient.ConnectionTimeout := FTimeout;
   FHttpClient.ResponseTimeout := FTimeout;
@@ -251,6 +252,14 @@ begin
       Result := LContentVal.Value
     else
       Result := EmptyStr;
+
+    // Leitura do consumo de tokens nativo do Ollama (/api/chat)
+    FUsage.PromptTokens := LJSON.GetValue<Integer>('prompt_eval_count', 0);
+    FUsage.CompletionTokens := LJSON.GetValue<Integer>('eval_count', 0);
+    FUsage.TotalTokens := FUsage.PromptTokens + FUsage.CompletionTokens;
+
+    if FUsage.HasUsage and Assigned(FOnTokenUsage) then
+      FOnTokenUsage(FUsage);
   finally
     LJSON.Free;
   end;

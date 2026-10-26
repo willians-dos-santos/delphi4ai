@@ -704,6 +704,7 @@ begin
   Result := EmptyStr;
   ARawJSON := EmptyStr;
   SetLastToolCalls([]);
+  FUsage.Clear;
 
   FHttpClient.ConnectionTimeout := FTimeout;
   FHttpClient.ResponseTimeout := FTimeout;
@@ -745,6 +746,15 @@ begin
       FPromptTokenCount := LUsageObj.GetValue<Integer>('promptTokenCount', 0);
       FCandidatesTokenCount := LUsageObj.GetValue<Integer>('candidatesTokenCount', 0);
       FTotalTokenCount := LUsageObj.GetValue<Integer>('totalTokenCount', 0);
+
+      FUsage.PromptTokens := FPromptTokenCount;
+      FUsage.CompletionTokens := FCandidatesTokenCount;
+      FUsage.TotalTokens := FTotalTokenCount;
+      if (FUsage.TotalTokens = 0) and ((FUsage.PromptTokens > 0) or (FUsage.CompletionTokens > 0)) then
+        FUsage.TotalTokens := FUsage.PromptTokens + FUsage.CompletionTokens;
+
+      if Assigned(FOnTokenUsage) then
+        FOnTokenUsage(FUsage);
     end;
 
     LCandidatesVal := LJSON.FindValue('candidates');

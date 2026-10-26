@@ -234,6 +234,39 @@ LLM.MaxHistoryMessages := 10; // Mantem no maximo 10 mensagens
 
 ---
 
+## 📊 Monitoramento de Consumo de Tokens (Token Usage)
+
+O Delphi4AI unifica o monitoramento de tokens consumidos em requisições para todos os provedores (**OpenAI**, **Groq**, **Gemini** e **Ollama**):
+
+```delphi
+var
+  Resposta: string;
+begin
+  Resposta := LLM.Send('Explique o conceito de polimorfismo');
+
+  // Acesso direto ao consumo da ultima requisicao
+  Writeln(Format('Tokens - Prompt: %d | Resposta: %d | Total: %d',
+    [LLM.PromptTokens, LLM.CompletionTokens, LLM.TotalTokens]));
+
+  // Ou atraves do record TLLMUsage
+  if LLM.Usage.HasUsage then
+    Writeln(LLM.Usage.ToString);
+end;
+```
+
+### Notificação Reativa via Evento (`OnTokenUsage`):
+
+Ideal para logs, métricas em tempo real e controle de orçamento/custos:
+
+```delphi
+LLM.OnTokenUsage := procedure(const AUsage: TLLMUsage)
+  begin
+    Log(Format('Turno executado. Consumo: %s', [AUsage.ToString]));
+  end;
+```
+
+---
+
 ## 🎨 Geração de Imagens
 
 O Delphi4AI oferece suporte de primeira classe à geração de imagens via **Pollinations.ai** (100% gratuito e sem necessidade de chave de API) e **Google Gemini Nano Banana** (via endpoint moderno `/v1beta/interactions`), sempre com zero dependências externas:

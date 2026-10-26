@@ -1,4 +1,4 @@
-unit Unit1;
+﻿unit Unit1;
 
 interface
 
@@ -306,9 +306,17 @@ begin
   if not ACustomMsg.IsEmpty then
     lblStatus.Caption := ACustomMsg
   else if FLLM.IsAssigned then
-    lblStatus.Caption :=
-      Format('Mensagens ativas no historico: %d (Estrategia: %s, Tools: %d)',
-      [FLLM.Messages.Count, cbbStrategy.Text, FLLM.Tools.Count])
+  begin
+    if FLLM.Usage.HasUsage then
+      lblStatus.Caption :=
+        Format('Mensagens: %d (Estrategia: %s, Tools: %d) | Consumo: [Prompt: %d, Resposta: %d, Total: %d]',
+        [FLLM.Messages.Count, cbbStrategy.Text, FLLM.Tools.Count,
+         FLLM.PromptTokens, FLLM.CompletionTokens, FLLM.TotalTokens])
+    else
+      lblStatus.Caption :=
+        Format('Mensagens ativas no historico: %d (Estrategia: %s, Tools: %d)',
+        [FLLM.Messages.Count, cbbStrategy.Text, FLLM.Tools.Count]);
+  end
   else
     lblStatus.Caption := 'Pronto';
 end;
@@ -432,7 +440,11 @@ begin
           if not LErro.IsEmpty then
             AppendChat('ERRO', LErro)
           else
+          begin
             AppendChat('Assistente', LResposta);
+            if FLLM.Usage.HasUsage then
+              AppendChat('Consumo de Tokens', FLLM.Usage.ToString);
+          end;
         end);
 
     end);
@@ -498,6 +510,9 @@ begin
               + sLineBreak + '  • Recomendacao: %s', [LPrevisao.Cidade,
               LPrevisao.Temperatura, LPrevisao.Umidade, LChovendoStr,
               LCondicaoStr, LPrevisao.Recomendacao]));
+
+            if FLLM.Usage.HasUsage then
+              AppendChat('Consumo de Tokens', FLLM.Usage.ToString);
           end;
         end);
     end);
@@ -560,6 +575,9 @@ begin
                 sLineBreak + '  • Competencias: %s' + sLineBreak +
                 '  • Ativo: %s', [LPerfil.Nome, LPerfil.Idade,
                 LPerfil.Profissao, LPerfil.Competencias, LAtivoStr]));
+
+              if FLLM.Usage.HasUsage then
+                AppendChat('Consumo de Tokens', FLLM.Usage.ToString);
             end;
           finally
             LPerfil.Free;

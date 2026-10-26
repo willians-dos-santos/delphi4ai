@@ -82,6 +82,13 @@ type
     function GetOnAfterExecuteTool: TOnAfterExecuteToolEvent;
     procedure SetOnAfterExecuteTool(const Value: TOnAfterExecuteToolEvent);
     function GetResponseFormat: ILLMResponseFormat;
+
+    function GetUsage: TLLMUsage;
+    function GetPromptTokens: Integer;
+    function GetCompletionTokens: Integer;
+    function GetTotalTokens: Integer;
+    function GetOnTokenUsage: TOnTokenUsageEvent;
+    procedure SetOnTokenUsage(const Value: TOnTokenUsageEvent);
   public
     constructor Create(const AProvider: ILLMProvider);
 
@@ -169,6 +176,12 @@ type
     property OnBeforeExecuteTool: TOnBeforeExecuteToolEvent read GetOnBeforeExecuteTool write SetOnBeforeExecuteTool;
     property OnAfterExecuteTool: TOnAfterExecuteToolEvent read GetOnAfterExecuteTool write SetOnAfterExecuteTool;
     property ResponseFormat: ILLMResponseFormat read GetResponseFormat;
+
+    property Usage: TLLMUsage read GetUsage;
+    property PromptTokens: Integer read GetPromptTokens;
+    property CompletionTokens: Integer read GetCompletionTokens;
+    property TotalTokens: Integer read GetTotalTokens;
+    property OnTokenUsage: TOnTokenUsageEvent read GetOnTokenUsage write SetOnTokenUsage;
   end;
 
   /// <summary>
@@ -548,6 +561,50 @@ function TLLMClient.GetResponseFormat: ILLMResponseFormat;
 begin
   CheckAssigned;
   Result := FProvider.ResponseFormat;
+end;
+
+function TLLMClient.GetUsage: TLLMUsage;
+begin
+  if IsAssigned then
+    Result := FProvider.Usage
+  else
+    Result.Clear;
+end;
+
+function TLLMClient.GetPromptTokens: Integer;
+begin
+  if IsAssigned then
+    Result := FProvider.PromptTokens
+  else
+    Result := 0;
+end;
+
+function TLLMClient.GetCompletionTokens: Integer;
+begin
+  if IsAssigned then
+    Result := FProvider.CompletionTokens
+  else
+    Result := 0;
+end;
+
+function TLLMClient.GetTotalTokens: Integer;
+begin
+  if IsAssigned then
+    Result := FProvider.TotalTokens
+  else
+    Result := 0;
+end;
+
+function TLLMClient.GetOnTokenUsage: TOnTokenUsageEvent;
+begin
+  CheckAssigned;
+  Result := FProvider.OnTokenUsage;
+end;
+
+procedure TLLMClient.SetOnTokenUsage(const Value: TOnTokenUsageEvent);
+begin
+  CheckAssigned;
+  FProvider.OnTokenUsage := Value;
 end;
 
 procedure TLLMClient.ClearHistory;

@@ -35,7 +35,9 @@ type
       const ABaseURL: string = 'https://api.groq.com/openai/v1/chat/completions');
     destructor Destroy; override;
 
-    procedure SetMockResponse(const AContent: string);
+    procedure SetMockResponse(const AContent: string); overload;
+    procedure SetMockResponse(const AContent: string;
+      APromptTokens, ACompletionTokens: Integer; ATotalTokens: Integer = 0); overload;
     procedure SetMockRawJSON(const ARawJSON: string);
     procedure SetMockError(const AStatusCode: Integer; const AErrorMsg: string);
     procedure SetMockToolCall(const AToolId, AFuncName, AArgsJSON: string; const AContent: string = '');
@@ -72,6 +74,7 @@ type
     procedure TestBuildBodyJSON_TwoPhaseToolsWithStructuredOutput;
     procedure TestExtractErrorMessage_GroqFormat;
     procedure TestSend_SimpleMessage;
+    procedure TestSend_CapturesTokenUsage;
     procedure TestSend_ToolCalls;
     procedure TestFactory_CreateGroqProvider;
     procedure TestFactory_Polymorphic;
@@ -110,6 +113,40 @@ begin
   FMockStatusCode := 200;
   FMockResponseContent := AContent;
   FMockRawJSON := EmptyStr;
+end;
+
+procedure TMockGroqProvider.SetMockResponse(const AContent: string;
+  APromptTokens, ACompletionTokens, ATotalTokens: Integer);
+var
+  LRoot, LChoice, LMsg, LUsage: TJSONObject;
+  LChoices: TJSONArray;
+begin
+  LRoot := TJSONObject.Create;
+  try
+    LChoices := TJSONArray.Create;
+    LRoot.AddPair('choices', LChoices);
+
+    LChoice := TJSONObject.Create;
+    LChoices.AddElement(LChoice);
+
+    LMsg := TJSONObject.Create;
+    LMsg.AddPair('role', 'assistant');
+    LMsg.AddPair('content', AContent);
+    LChoice.AddPair('message', LMsg);
+
+    LUsage := TJSONObject.Create;
+    LUsage.AddPair('prompt_tokens', TJSONNumber.Create(APromptTokens));
+    LUsage.AddPair('completion_tokens', TJSONNumber.Create(ACompletionTokens));
+    if ATotalTokens > 0 then
+      LUsage.AddPair('total_tokens', TJSONNumber.Create(ATotalTokens))
+    else
+      LUsage.AddPair('total_tokens', TJSONNumber.Create(APromptTokens + ACompletionTokens));
+    LRoot.AddPair('usage', LUsage);
+
+    SetMockRawJSON(LRoot.ToJSON);
+  finally
+    LRoot.Free;
+  end;
 end;
 
 procedure TMockGroqProvider.SetMockRawJSON(const ARawJSON: string);
@@ -206,6 +243,7 @@ begin
   Result := EmptyStr;
   ARawJSON := EmptyStr;
   SetLastToolCalls([]);
+  FUsage.Clear;
 
   // Aplica os cabecalhos mockados chamando o metodo real UpdateRateLimit do TGroqProvider
   for I := 0 to FMockHeaders.Count - 1 do
@@ -300,6 +338,19 @@ begin
             Result := EmptyStr;
         end;
       end;
+    end;
+
+    LUsageVal := LRoot.FindValue('usage');
+    if LUsageVal is TJSONObject then
+    begin
+      FUsage.PromptTokens := TJSONObject(LUsageVal).GetValue<Integer>('prompt_tokens', 0);
+      FUsage.CompletionTokens := TJSONObject(LUsageVal).GetValue<Integer>('completion_tokens', 0);
+      FUsage.TotalTokens := TJSONObject(LUsageVal).GetValue<Integer>('total_tokens', 0);
+      if (FUsage.TotalTokens = 0) and ((FUsage.PromptTokens > 0) or (FUsage.CompletionTokens > 0)) then
+        FUsage.TotalTokens := FUsage.PromptTokens + FUsage.CompletionTokens;
+
+      if Assigned(FOnTokenUsage) then
+        FOnTokenUsage(FUsage);
     end;
   finally
     LRoot.Free;
@@ -627,6 +678,35 @@ begin
   CheckEquals(2, FProvider.Messages.Count, 'Historico deve conter user e assistant');
   CheckEquals('assistant', TJSONObject(FProvider.Messages.Items[1]).GetValue<string>('role'));
   CheckEquals('Olá do Groq super rápido!', TJSONObject(FProvider.Messages.Items[1]).GetValue<string>('content'));
+end;
+
+procedure TTestGroqProvider.TestSend_CapturesTokenUsage;
+var
+  LResp: string;
+  LCallbackFired: Boolean;
+  LCallbackUsage: TLLMUsage;
+begin
+  LCallbackFired := False;
+  FProvider.OnTokenUsage := procedure(const AUsage: TLLMUsage)
+    begin
+      LCallbackFired := True;
+      LCallbackUsage := AUsage;
+    end;
+
+  FProvider.SetMockResponse('Resposta com tokens', 18, 42, 60);
+  FProvider.AddUser('Conte-me algo');
+  LResp := FProvider.Send;
+
+  CheckEquals('Resposta com tokens', LResp);
+  CheckEquals(18, FProvider.PromptTokens, 'PromptTokens deve ser 18');
+  CheckEquals(42, FProvider.CompletionTokens, 'CompletionTokens deve ser 42');
+  CheckEquals(60, FProvider.TotalTokens, 'TotalTokens deve ser 60');
+  CheckEquals(60, FProvider.Usage.TotalTokens, 'Usage.TotalTokens deve ser 60');
+
+  CheckTrue(LCallbackFired, 'OnTokenUsage deveria ter sido disparado');
+  CheckEquals(18, LCallbackUsage.PromptTokens, 'Callback PromptTokens deve ser 18');
+  CheckEquals(42, LCallbackUsage.CompletionTokens, 'Callback CompletionTokens deve ser 42');
+  CheckEquals(60, LCallbackUsage.TotalTokens, 'Callback TotalTokens deve ser 60');
 end;
 
 procedure TTestGroqProvider.TestSend_ToolCalls;

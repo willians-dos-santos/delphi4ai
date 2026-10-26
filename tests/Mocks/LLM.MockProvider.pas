@@ -1,4 +1,4 @@
-﻿unit LLM.MockProvider;
+unit LLM.MockProvider;
 
 interface
 
@@ -32,7 +32,9 @@ type
       const ABaseURL: string = 'https://api.mock.test/v1/chat/completions';
       const AModel: string = 'gpt-4o-mini');
 
-    procedure SetMockResponse(const AAssistantContent: string);
+    procedure SetMockResponse(const AAssistantContent: string); overload;
+    procedure SetMockResponse(const AAssistantContent: string;
+      APromptTokens, ACompletionTokens: Integer; ATotalTokens: Integer = 0); overload;
     procedure SetMockRawJSON(const ARawJSON: string);
     procedure SetMockError(const AStatusCode: Integer; const AErrorMsg: string);
     procedure SetMockToolCall(const AToolId, AFuncName, AArgsJSON: string; const AContent: string = '');
@@ -80,7 +82,7 @@ function TMockLLMProvider.ExecuteRequest(const ABodyJSON: string;
 var
   LRoot, LChoice, LMsg: TJSONObject;
   LChoices, LToolCallsArr: TJSONArray;
-  LChoicesVal, LMsgVal, LToolsVal, LFuncVal, LContentVal: TJSONValue;
+  LChoicesVal, LMsgVal, LToolsVal, LFuncVal, LContentVal, LUsageVal: TJSONValue;
   LVal: TJSONValue;
   LCallObj, LFuncObj: TJSONObject;
   LCalls: TLLMToolCallList;
@@ -92,6 +94,7 @@ begin
   Result := EmptyStr;
   ARawJSON := EmptyStr;
   SetLastToolCalls([]);
+  FUsage.Clear;
 
   // Se configurado para simular erro HTTP
   if FMockStatusCode <> 200 then
@@ -184,6 +187,19 @@ begin
           end;
         end;
       end;
+
+      LUsageVal := LRoot.FindValue('usage');
+      if LUsageVal is TJSONObject then
+      begin
+        FUsage.PromptTokens := TJSONObject(LUsageVal).GetValue<Integer>('prompt_tokens', 0);
+        FUsage.CompletionTokens := TJSONObject(LUsageVal).GetValue<Integer>('completion_tokens', 0);
+        FUsage.TotalTokens := TJSONObject(LUsageVal).GetValue<Integer>('total_tokens', 0);
+        if (FUsage.TotalTokens = 0) and ((FUsage.PromptTokens > 0) or (FUsage.CompletionTokens > 0)) then
+          FUsage.TotalTokens := FUsage.PromptTokens + FUsage.CompletionTokens;
+
+        if Assigned(FOnTokenUsage) then
+          FOnTokenUsage(FUsage);
+      end;
     finally
       LRoot.Free;
     end;
@@ -197,6 +213,40 @@ begin
   FMockRawJSON := EmptyStr;
   SetLength(FMockResponsesQueue, 0);
   FCurrentResponseIndex := 0;
+end;
+
+procedure TMockLLMProvider.SetMockResponse(const AAssistantContent: string;
+  APromptTokens, ACompletionTokens: Integer; ATotalTokens: Integer);
+var
+  LRoot, LChoice, LMsg, LUsage: TJSONObject;
+  LChoices: TJSONArray;
+begin
+  LRoot := TJSONObject.Create;
+  try
+    LChoices := TJSONArray.Create;
+    LRoot.AddPair('choices', LChoices);
+
+    LChoice := TJSONObject.Create;
+    LChoices.AddElement(LChoice);
+
+    LMsg := TJSONObject.Create;
+    LMsg.AddPair('role', 'assistant');
+    LMsg.AddPair('content', AAssistantContent);
+    LChoice.AddPair('message', LMsg);
+
+    LUsage := TJSONObject.Create;
+    LUsage.AddPair('prompt_tokens', TJSONNumber.Create(APromptTokens));
+    LUsage.AddPair('completion_tokens', TJSONNumber.Create(ACompletionTokens));
+    if ATotalTokens > 0 then
+      LUsage.AddPair('total_tokens', TJSONNumber.Create(ATotalTokens))
+    else
+      LUsage.AddPair('total_tokens', TJSONNumber.Create(APromptTokens + ACompletionTokens));
+    LRoot.AddPair('usage', LUsage);
+
+    SetMockRawJSON(LRoot.ToJSON);
+  finally
+    LRoot.Free;
+  end;
 end;
 
 procedure TMockLLMProvider.SetMockRawJSON(const ARawJSON: string);

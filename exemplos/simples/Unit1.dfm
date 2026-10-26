@@ -206,6 +206,9 @@ object Form1: TForm1
     TabOrder = 2
     ExplicitTop = 514
     ExplicitWidth = 778
+    DesignSize = (
+      780
+      78)
     object lblStatus: TLabel
       Left = 8
       Top = 46
@@ -258,6 +261,7 @@ object Form1: TForm1
       Top = 40
       Width = 175
       Height = 28
+      Anchors = [akRight, akBottom]
       Caption = #62667' Estruturado (Record)'
       TabOrder = 3
       OnClick = btnTestRecordClick
@@ -267,6 +271,7 @@ object Form1: TForm1
       Top = 40
       Width = 175
       Height = 28
+      Anchors = [akRight, akBottom]
       Caption = #62427' Estruturado (Classe)'
       TabOrder = 4
       OnClick = btnTestClassClick
